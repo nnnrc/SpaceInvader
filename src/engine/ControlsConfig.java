@@ -9,6 +9,10 @@ public final class ControlsConfig {
     public static final int FIRE = 2;
     public static final int BUFF = 3;
 
+    private static final int DEFAULT_LEFT_KEY = KeyEvent.VK_LEFT;
+    private static final int DEFAULT_RIGHT_KEY = KeyEvent.VK_RIGHT;
+    private static final int DEFAULT_FIRE_KEY = KeyEvent.VK_SPACE;
+
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(ControlsConfig.class);
 
@@ -18,11 +22,11 @@ public final class ControlsConfig {
     public static int getKey(final int action) {
         switch (action) {
         case LEFT:
-            return PREFS.getInt("left", KeyEvent.VK_LEFT);
+            return PREFS.getInt("left", DEFAULT_LEFT_KEY);
         case RIGHT:
-            return PREFS.getInt("right", KeyEvent.VK_RIGHT);
+            return PREFS.getInt("right", DEFAULT_RIGHT_KEY);
         case FIRE:
-            return PREFS.getInt("fire", KeyEvent.VK_SPACE);
+            return PREFS.getInt("fire", DEFAULT_FIRE_KEY);
         default:
             return KeyEvent.VK_UNDEFINED;
         }
@@ -42,5 +46,11 @@ public final class ControlsConfig {
         default:
             break;
         }
+    }
+
+    public static void resetToDefaults() {
+        setKey(LEFT, DEFAULT_LEFT_KEY);
+        setKey(RIGHT, DEFAULT_RIGHT_KEY);
+        setKey(FIRE, DEFAULT_FIRE_KEY);
     }
 }
