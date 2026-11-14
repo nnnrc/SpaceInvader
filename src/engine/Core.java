@@ -181,6 +181,7 @@ public final class Core {
 					RunSession runSession = new RunSession(UUID.randomUUID().toString());
 					campaignRewards.startRun(runSession.getRunId());
 					recordsService.startRun(runSession.getRunId());
+					boolean quitRun = false;
 					do {
 						// One extra live every few levels.
 						boolean bonusLife = gameState.getLevel()
@@ -198,6 +199,12 @@ public final class Core {
 								screen -> frame.setScreen(screen));
 						LOGGER.info("Closing game screen.");
 						resolveRewards(false);
+
+						if (((GameScreen) currentScreen).isQuit()) {
+							LOGGER.info("Campaign quit from the pause menu.");
+							quitRun = true;
+							break;
+						}
 
 						boolean stageCleared = ((GameScreen) currentScreen).isStageCleared();
 						gameState = ((GameScreen) currentScreen).getGameState();
@@ -221,6 +228,11 @@ public final class Core {
 
 					} while (gameState.getLivesRemaining() > 0
 							&& gameState.getLevel() <= CampaignStageData.getTotalStages());
+
+					if (quitRun) {
+						returnCode = 1;
+						break;
+					}
 
 					RunRecord completedRun = runSession.finish(gameState.getScore(),
 							gameState.getShipsDestroyed(), System.currentTimeMillis());

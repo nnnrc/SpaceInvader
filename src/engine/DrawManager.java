@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import screen.PauseMenu;
 import screen.Screen;
 import hud.FloatingScoreHud;
 import currency.PermanentUpgrade;
@@ -534,6 +535,39 @@ public final class DrawManager {
                 * scale / 2, screen.getHeight() / 2 - 50, scale);
         backBufferGraphics.setColor(GameColors.TEXT);
         drawCenteredBigString(screen, "Paused", screen.getHeight() / 2 + 20);
+    }
+
+    /**
+     * Draws the pause menu over the game: the game is dimmed, the pause icon
+     * and label are shown, then either the menu options or the quit
+     * confirmation, with the selected option highlighted.
+     *
+     * @param screen
+     *               Screen to draw on.
+     * @param menu
+     *               Pause menu to draw.
+     */
+    public void drawPauseMenu(final Screen screen, final PauseMenu menu) {
+        backBufferGraphics.setColor(new Color(0, 0, 0, 170));
+        backBufferGraphics.fillRect(0, 0, screen.getWidth(),
+                screen.getHeight());
+        drawPaused(screen);
+
+        int spacing = fontRegularMetrics.getHeight() * 2;
+        int y = screen.getHeight() / 2 + 20 + spacing * 2;
+        String[] options = PauseMenu.OPTIONS;
+        if (menu.isConfirmingQuit()) {
+            backBufferGraphics.setColor(GameColors.TEXT);
+            drawCenteredRegularString(screen, "Quit? This run will not be saved.",
+                    y);
+            y += spacing;
+            options = PauseMenu.CONFIRM_OPTIONS;
+        }
+        for (int i = 0; i < options.length; i++) {
+            backBufferGraphics.setColor(i == menu.getSelected()
+                    ? GameColors.HIGHLIGHT : GameColors.TEXT_DIM);
+            drawCenteredRegularString(screen, options[i], y + i * spacing);
+        }
     }
 
     /**
