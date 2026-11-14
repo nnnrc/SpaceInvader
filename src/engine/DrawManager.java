@@ -1894,7 +1894,7 @@ public final class DrawManager {
      */
     private String[] getControlsSettingsLabels(final int selectedOption,
             final boolean waitingForKey) {
-        String[] labels = { "Move Left", "Move Right", "Fire", "Back" };
+        String[] labels = { "Move Left", "Move Right", "Fire", "Reset to Defaults", "Back" };
         String[] keys = {
                 getKeyDisplayText(ControlsConfig.getKey(ControlsConfig.LEFT)),
                 getKeyDisplayText(ControlsConfig.getKey(ControlsConfig.RIGHT)),
