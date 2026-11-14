@@ -8,6 +8,7 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -833,6 +834,60 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, modeLabel, screen.getHeight()
                 / height + fontRegularMetrics.getHeight() * 8);
+    }
+
+    /**
+     * Draws the How to Play screen: the controls, using the keys set in
+     * Controls settings, and what each item does.
+     *
+     * @param screen
+     *               Screen to draw on.
+     */
+    public void drawHowToPlay(final Screen screen) {
+        int spacing = fontRegularMetrics.getHeight() + 4;
+
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredBigString(screen, "How to Play", screen.getHeight() / 8);
+        backBufferGraphics.setColor(Color.GRAY);
+        drawCenteredRegularString(screen, "Press Esc to return",
+                screen.getHeight() / 5);
+
+        String left = KeyEvent.getKeyText(ControlsConfig.getKey(ControlsConfig.LEFT));
+        String right = KeyEvent.getKeyText(ControlsConfig.getKey(ControlsConfig.RIGHT));
+        String fire = KeyEvent.getKeyText(ControlsConfig.getKey(ControlsConfig.FIRE));
+        String[] controls = {
+                "Move: " + left + " / " + right,
+                "Fire: " + fire,
+                "Throw grenade: G",
+                "Charge laser: hold Space",
+                "Endless mode: press I on the title"
+        };
+        String[] items = {
+                "Energy Shield: blocks enemy bullets",
+                "Twin Cannon: fires two shots",
+                "Hyperfire: shoots faster",
+                "Chameleon Hull: move freely, no shots",
+                "Cluster Grenade: explodes into pieces",
+                "Orbital Annihilator: laser beam"
+        };
+
+        int y = screen.getHeight() / 4 + spacing;
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredRegularString(screen, "CONTROLS", y);
+        backBufferGraphics.setColor(Color.WHITE);
+        for (String line : controls) {
+            y += spacing;
+            drawCenteredRegularString(screen, line, y);
+        }
+
+        y += spacing * 2;
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredRegularString(screen, "ITEMS", y);
+        backBufferGraphics.setColor(Color.WHITE);
+        for (String line : items) {
+            y += spacing;
+            drawCenteredRegularString(screen, line, y);
+        }
     }
 
     /**
