@@ -134,6 +134,10 @@ public final class DrawManager {
     /** Big sized font properties. */
     private static FontMetrics fontBigMetrics;
 
+    /** Color of the key caps on the How to Play screen. */
+    private static final Color KEY_CAP_COLOR = new Color(255, 220, 70);
+    /** Space between two key caps on the same row. */
+    private static final int KEY_CAP_GAP = 6;
     /** Options of the settings menu, in order. */
     private static final String[] SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Gameplay", "Back" };
     /** Options of the gameplay settings menu, in order. */
@@ -836,11 +840,6 @@ public final class DrawManager {
                 / height + fontRegularMetrics.getHeight() * 8);
     }
 
-    /** Color of the key caps on the How to Play screen. */
-    private static final Color KEY_CAP_COLOR = new Color(255, 220, 70);
-    /** Space between two key caps on the same row. */
-    private static final int KEY_CAP_GAP = 6;
-
     /**
      * Draws the How to Play screen: a title, the current page and how to
      * move between pages.
@@ -928,7 +927,7 @@ public final class DrawManager {
             final List<Entity> items) {
         String[] names = { "Energy Shield", "Twin Cannon", "Hyperfire",
                 "Chameleon Hull", "Cluster Grenade", "Orbital Annihilator" };
-        String[] descriptions = { "Blocks enemy bullets", "Fires two shots",
+        String[] descriptions = { "Blocks bullets (Heavy Tank)", "Fires two shots",
                 "Shoots faster", "Move freely, no shots", "Press G to throw",
                 "Hold Space for a beam" };
 
