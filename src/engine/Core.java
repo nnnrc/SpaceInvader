@@ -29,6 +29,7 @@ import audio.AudioControls;
 import screen.AudioControlScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
+import screen.HowToPlayScreen;
 import screen.InfiniteGameScreen;
 import screen.ScoreScreen;
 import screen.Screen;
@@ -246,6 +247,13 @@ public final class Core {
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing high score screen.");
 					break;
+                case 15:
+                    // How to Play.
+                    currentScreen = new HowToPlayScreen(width, height, FPS);
+                    LOGGER.info("Starting how to play screen.");
+                    returnCode = frame.setScreen(currentScreen);
+                    LOGGER.info("Closing how to play screen.");
+                    break;
 				case 9:
 					currentScreen = new PlayerRecordsScreen(width, height, FPS, recordsService);
 					returnCode = frame.setScreen(currentScreen);

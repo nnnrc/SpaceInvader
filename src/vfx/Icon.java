@@ -206,6 +206,20 @@ public enum Icon {
 			"..PPPPDDD..",
 			"....DDD...."),
 
+	/** How to Play: a question mark in a speech bubble. */
+	HOW_TO_PLAY("BY", new Color[] { GameColors.POWERUP_SHIELD,
+			GameColors.ICON_SCORE },
+			".BBBBBBB.",
+			"B..YYY..B",
+			"B.Y...Y.B",
+			"B.....Y.B",
+			"B....Y..B",
+			"B...Y...B",
+			"B.......B",
+			"B...Y...B",
+			".BBBBBBB.",
+			".B......."),
+
 	/** Exit: a wormhole portal. */
 	EXIT("PBW", new Color[] { GameColors.POWERUP_RAPID_FIRE,
 			GameColors.POWERUP_SHIELD, GameColors.ICON_UI },
