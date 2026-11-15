@@ -564,6 +564,8 @@ public class GameScreen extends Screen {
 			// Boss stages start the boss music right away, so it already plays
 			// during the countdown instead of switching when the boss appears.
 			AudioManager.playBGM("audio/bgm/music_boss.wav");
+
+            AudioManager.playSFX("audio/sfx/boss_warning_voice.wav");
 			this.isLowHealthBGM = false;
 		} else {
 			AudioManager.playBGM("audio/bgm/music_game.wav");
@@ -1447,8 +1449,12 @@ public class GameScreen extends Screen {
         if (countdown == this.lastCountdown)
             return;
         this.lastCountdown = countdown;
-        if (countdown == 0)
+        if (countdown == 0) {
             AudioManager.playSFX("audio/sfx/countdown_go.wav");
+            if (!isBossLevel(this.level)) {
+                AudioManager.playSFX("audio/sfx/wave_start_voice.wav");
+            }
+        }
         else if (countdown <= 3)
             AudioManager.playSFX("audio/sfx/countdown_beep.wav");
     }

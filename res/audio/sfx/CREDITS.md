@@ -340,3 +340,18 @@ documented below for completeness.
 - Source: https://opengameart.org/content/512-sound-effects-8-bit-style
 - License: CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
 - Changes: Renamed only (16-bit / 44.1kHz mono WAV)
+
+## boss_warning_voice.wav
+
+- Original: Generated voice announcement from Voicebooking
+- Source: https://www.voicebooking.com/
+- License: Generated voice asset
+- Changes: Renamed only
+
+
+## wave_start_voice.wav
+
+- Original: Generated voice announcement from Voicebooking
+- Source: https://www.voicebooking.com/
+- License: Generated voice asset
+- Changes: Renamed only
