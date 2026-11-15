@@ -1,5 +1,10 @@
 package screen;
 
+import java.awt.event.KeyEvent;
+
+import audio.AudioManager;
+import engine.InputManager;
+
 /**
  * Keeps the state of the pause menu shown during a game: whether it is open,
  * which option is selected and whether quitting is being confirmed. It only
@@ -49,6 +54,47 @@ public final class PauseMenu {
     private boolean downWasDown;
     /** Whether a select key was down on the previous frame. */
     private boolean selectWasDown;
+
+    /**
+     * Reads the keys of one frame and plays the matching feedback: the
+     * background music pauses while the menu is open, and the menu sounds
+     * are the same as on the other menu screens. Esc opens and closes the
+     * menu, Up / W and Down / S move the selection, and Space / Enter choose.
+     *
+     * @param input
+     *            Keyboard state of the game.
+     * @return What the screen has to do.
+     */
+    public Action update(final InputManager input) {
+        Action action = handleKeys(input.isKeyDown(KeyEvent.VK_ESCAPE),
+                input.isKeyDown(KeyEvent.VK_UP)
+                        || input.isKeyDown(KeyEvent.VK_W),
+                input.isKeyDown(KeyEvent.VK_DOWN)
+                        || input.isKeyDown(KeyEvent.VK_S),
+                input.isKeyDown(KeyEvent.VK_SPACE)
+                        || input.isKeyDown(KeyEvent.VK_ENTER));
+        switch (action) {
+        case PAUSE:
+            AudioManager.pauseBGM();
+            AudioManager.playSFX("audio/sfx/menu_select.wav");
+            break;
+        case MOVE:
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
+            break;
+        case RESUME:
+            AudioManager.resumeBGM();
+            AudioManager.playSFX("audio/sfx/menu_select.wav");
+            break;
+        case QUIT:
+            AudioManager.stopBGM();
+            AudioManager.resumeBGM();
+            AudioManager.playSFX("audio/sfx/menu_back.wav");
+            break;
+        default:
+            break;
+        }
+        return action;
+    }
 
     /**
      * Reacts to the keys of one frame. Each key acts once when it is pressed,

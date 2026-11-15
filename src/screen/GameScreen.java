@@ -1449,39 +1449,15 @@ public class GameScreen extends Screen {
         if (!this.inputDelay.checkFinished() || this.levelFinished)
             return false;
 
-        PauseMenu.Action action = this.pauseMenu.handleKeys(
-                inputManager.isKeyDown(KeyEvent.VK_ESCAPE),
-                inputManager.isKeyDown(KeyEvent.VK_UP)
-                        || inputManager.isKeyDown(KeyEvent.VK_W),
-                inputManager.isKeyDown(KeyEvent.VK_DOWN)
-                        || inputManager.isKeyDown(KeyEvent.VK_S),
-                inputManager.isKeyDown(KeyEvent.VK_SPACE)
-                        || inputManager.isKeyDown(KeyEvent.VK_ENTER));
-        switch (action) {
-        case PAUSE:
-            AudioManager.pauseBGM();
-            if (this.runSession != null)
-                this.runSession.stopActiveSegment(System.nanoTime());
-            AudioManager.playSFX("audio/sfx/menu_select.wav");
-            break;
-        case MOVE:
-            AudioManager.playSFX("audio/sfx/menu_move.wav");
-            break;
-        case RESUME:
-            AudioManager.resumeBGM();
-            AudioManager.playSFX("audio/sfx/menu_select.wav");
-            break;
-        case QUIT:
+        PauseMenu.Action action = this.pauseMenu.update(inputManager);
+        if (action == PauseMenu.Action.PAUSE && this.runSession != null)
+            this.runSession.stopActiveSegment(System.nanoTime());
+        if (action == PauseMenu.Action.QUIT) {
             this.quit = true;
             if (this.recordsService != null && this.runSession != null)
                 this.recordsService.abandonRun(this.runSession.getRunId());
-            AudioManager.stopBGM();
-            AudioManager.resumeBGM();
-            AudioManager.playSFX("audio/sfx/menu_back.wav");
             this.isRunning = false;
             return true;
-        default:
-            break;
         }
 
         if (this.pauseMenu.isOpen()) {
