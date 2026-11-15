@@ -678,6 +678,39 @@ public final class DrawManager {
     }
 
     /**
+     * Draws the boss health bar at the top of the play area, under the HUD
+     * line. The red part gets shorter as the boss loses health.
+     *
+     * @param screen
+     *                    Screen to draw on.
+     * @param healthRatio
+     *                    Share of health the boss has left, between 0 and 1.
+     */
+    public void drawBossHealthBar(final Screen screen,
+            final double healthRatio) {
+        int barWidth = 200;
+        int barHeight = 6;
+        int barX = screen.getWidth() / 2 - barWidth / 2;
+        int barY = 52;
+
+        // "BOSS" label on the left of the bar.
+        String label = "BOSS";
+        backBufferGraphics.setFont(fontRegular);
+        backBufferGraphics.setColor(Color.WHITE);
+        backBufferGraphics.drawString(label,
+                barX - fontRegularMetrics.stringWidth(label) - 8,
+                barY + barHeight);
+
+        // Empty bar first, then the health that is left on top of it.
+        backBufferGraphics.setColor(Color.DARK_GRAY);
+        backBufferGraphics.fillRect(barX, barY, barWidth, barHeight);
+
+        backBufferGraphics.setColor(Color.RED);
+        backBufferGraphics.fillRect(barX, barY,
+                (int) Math.round(barWidth * healthRatio), barHeight);
+    }
+
+    /**
      * Draws game title.
      *
      * @param screen

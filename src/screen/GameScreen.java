@@ -26,6 +26,7 @@ import level.WaveDefinition;
 import entity.Bullet;
 import boss.BossEvent;
 import boss.BossEventListener;
+import boss.BossHudInfo;
 import boss.BossManager;
 import boss.BossSpawnRequest;
 import boss.BossStatus;
@@ -941,6 +942,11 @@ public class GameScreen extends Screen {
 			drawManager.drawAnnihilatorGauge(
 					this,
 					this.annihilator.getChargeProgress());
+
+		// Boss health bar, shown until the boss is defeated.
+		BossHudInfo bossHud = this.bossManager.getHudInfo();
+		if (bossHud != null && bossHud.isVisible())
+			drawManager.drawBossHealthBar(this, bossHud.getHealthRatio());
 
         drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
 
