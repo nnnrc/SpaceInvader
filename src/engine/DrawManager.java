@@ -8,6 +8,8 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -132,6 +134,9 @@ public final class DrawManager {
     private static Font fontBig;
     /** Big sized font properties. */
     private static FontMetrics fontBigMetrics;
+    /** Fallback font used for characters the regular pixel font cannot
+     * display, such as Hangul syllables (e.g. Korean score names). */
+    private static Font fontKorean;
 
     /** Options of the settings menu, in order. */
     private static final String[] SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Gameplay", "Back" };
@@ -232,6 +237,12 @@ public final class DrawManager {
             // Font loading.
             fontRegular = fileManager.loadFont(14f);
             fontBig = fileManager.loadFont(24f);
+            try {
+                fontKorean = fileManager.loadFont(14f, "Galmuri14.ttf");
+            } catch (IOException | FontFormatException e) {
+                logger.warning("Korean fallback font could not be loaded; "
+                        + "Hangul characters will not display correctly.");
+            }
             logger.info("Finished loading the fonts.");
 
         } catch (IOException e) {
@@ -1596,46 +1607,106 @@ public final class DrawManager {
     }
 
     public void drawNameInput(final Screen screen, final char[] name,
-            final int nameCharSelected) {
+            final int nameCharSelected, final boolean koreanMode) {
         drawNameInputAt(screen, name, nameCharSelected, screen.getHeight()
                 / 4 + fontRegularMetrics.getHeight() * 10,
-                fontRegularMetrics.getHeight() * 2);
+                fontRegularMetrics.getHeight() * 2, koreanMode);
     }
 
     private void drawNameInputAt(final Screen screen, final char[] name,
-            final int nameCharSelected, final int y, final int spacing) {
+            final int nameCharSelected, final int y, final int spacing,
+            final boolean koreanMode) {
         String newRecordString = "New Record!";
-        String introduceNameString = "Introduce name:";
+        String introduceNameString = "Introduce name: ["
+                + (koreanMode ? "KR" : "EN") + ", Tab to switch]";
 
         backBufferGraphics.setColor(Color.GREEN);
         drawCenteredRegularString(screen, newRecordString, y);
         backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, introduceNameString, y + spacing);
 
-        // 3 letters name.
-        int positionX = screen.getWidth()
-                / 2
-                - (fontRegularMetrics.getWidths()[name[0]]
-                        + fontRegularMetrics.getWidths()[name[1]]
-                        + fontRegularMetrics.getWidths()[name[2]]
-                        + fontRegularMetrics.getWidths()[' ']) / 2;
+        // 3 letters/syllables name. fontRegularMetrics.getWidths() only
+        // covers Latin-1 (code points 0-255), so Hangul syllables (code
+        // points above 0xAC00) need per-character metrics instead.
+        Font[] charFonts = new Font[3];
+        int[] charWidths = new int[3];
+        for (int i = 0; i < 3; i++) {
+            charFonts[i] = fontForChar(name[i]);
+            charWidths[i] = backBufferGraphics.getFontMetrics(charFonts[i])
+                    .charWidth(name[i]);
+        }
+        int spaceWidth = fontRegularMetrics.charWidth(' ');
+        int totalWidth = charWidths[0] + charWidths[1] + charWidths[2]
+                + spaceWidth * 2;
+        int positionX = screen.getWidth() / 2 - totalWidth / 2;
 
+        Font originalFont = backBufferGraphics.getFont();
+        Object originalAntialiasing = setTextAntialiasing(false);
         for (int i = 0; i < 3; i++) {
             if (i == nameCharSelected)
                 backBufferGraphics.setColor(Color.GREEN);
             else
                 backBufferGraphics.setColor(Color.WHITE);
 
-            positionX += fontRegularMetrics.getWidths()[name[i]] / 2;
-            positionX = i == 0 ? positionX
-                    : positionX
-                            + (fontRegularMetrics.getWidths()[name[i - 1]]
-                                    + fontRegularMetrics.getWidths()[' ']) / 2;
-
+            backBufferGraphics.setFont(charFonts[i]);
             backBufferGraphics.drawString(Character.toString(name[i]),
                     positionX,
                     y + spacing * 2);
+            positionX += charWidths[i] + spaceWidth;
         }
+        restoreTextAntialiasing(originalAntialiasing);
+        backBufferGraphics.setFont(originalFont);
+    }
+
+    /**
+     * Picks the font that can actually display the given character: the
+     * regular pixel font for everything it covers (Latin letters, digits),
+     * and the Korean fallback font for anything it cannot, such as Hangul
+     * syllables.
+     *
+     * @param c
+     *          Character to be drawn.
+     * @return Font able to display the character.
+     */
+    private Font fontForChar(final char c) {
+        if (fontRegular.canDisplay(c))
+            return fontRegular;
+        return fontKorean != null ? fontKorean : fontRegular;
+    }
+
+    /**
+     * Turns text antialiasing on backBufferGraphics on or off, so the
+     * Korean fallback font keeps a crisp pixel look consistent with the
+     * regular bitmap font.
+     *
+     * @param enabled
+     *                Whether antialiasing should be enabled.
+     * @return Previous antialiasing hint value, to be restored later.
+     */
+    private Object setTextAntialiasing(final boolean enabled) {
+        if (!(backBufferGraphics instanceof Graphics2D))
+            return null;
+        Graphics2D graphics2D = (Graphics2D) backBufferGraphics;
+        Object previous = graphics2D
+                .getRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING);
+        graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                enabled ? RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+                        : RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+        return previous;
+    }
+
+    /**
+     * Restores a text antialiasing hint previously returned by
+     * {@link #setTextAntialiasing(boolean)}.
+     *
+     * @param previousHint
+     *                     Hint value to restore.
+     */
+    private void restoreTextAntialiasing(final Object previousHint) {
+        if (!(backBufferGraphics instanceof Graphics2D) || previousHint == null)
+            return;
+        ((Graphics2D) backBufferGraphics).setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING, previousHint);
     }
 
     public void drawAchievementNotice(final Screen screen,
@@ -1662,14 +1733,15 @@ public final class DrawManager {
             final boolean gameCleared) {
         drawAchievementResults(screen, score, lives, enemies, accuracy,
                 isNewRecord, name, selected, achievements, acceptsInput,
-                failedStage, gameCleared, null);
+                failedStage, gameCleared, null, false);
     }
 
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
             final boolean isNewRecord, final char[] name, final int selected,
             final List<Achievement> achievements, final boolean acceptsInput,
-            final int failedStage, final boolean gameCleared, final String modeLabel) {
+            final int failedStage, final boolean gameCleared, final String modeLabel,
+            final boolean koreanMode) {
         int spacing = fontRegularMetrics.getHeight();
         int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
                 achievements.size());
@@ -1693,7 +1765,7 @@ public final class DrawManager {
         }
         if (isNewRecord) {
             y += spacing;
-            drawNameInputAt(screen, name, selected, y, spacing);
+            drawNameInputAt(screen, name, selected, y, spacing, koreanMode);
             y += spacing * 3;
         }
         y += spacing;
