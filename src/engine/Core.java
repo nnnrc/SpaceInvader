@@ -97,7 +97,6 @@ public final class Core {
 
 	/** Starts the game with the supplied catalog; previews can supply isolated sample products. */
 	public static void run(final List<ShopProduct> products) {
-        
 		Objects.requireNonNull(products, "products");
 		try {
 			LOGGER.setUseParentHandlers(false);
