@@ -46,4 +46,12 @@ class BuffHudTest {
 
         assertEquals(1, BuffHud.visible(steady, HIDDEN_PHASE).size());
     }
+
+    @Test
+    void shortEffectDoesNotBlinkFromTheStart() {
+        BuffStatus slow = new BuffStatus("Slowed", 1500, 2000,
+                BuffStatus.Kind.DEBUFF);
+
+        assertEquals(1, BuffHud.visible(List.of(slow), HIDDEN_PHASE).size());
+    }
 }

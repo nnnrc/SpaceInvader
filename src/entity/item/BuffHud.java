@@ -15,7 +15,9 @@ public final class BuffHud {
     private BuffHud() {
     }
 
-    /** Returns the active item buffs plus the slow debuff, if the player is slowed. */
+    /**
+     * Returns the active item buffs plus the slow debuff, if the player is slowed.
+     */
     public static List<BuffStatus> collect(final BuffManager buffManager,
                                            final PlayerStatus playerStatus, final long now) {
         List<BuffStatus> statuses =
@@ -29,7 +31,9 @@ public final class BuffHud {
         return statuses;
     }
 
-    /** Sorts effects by time left and drops those in the hidden half of their blink. */
+    /**
+     * Sorts effects by time left and drops those in the hidden half of their blink.
+     */
     public static List<BuffStatus> visible(final List<BuffStatus> statuses,
                                            final long now) {
         List<BuffStatus> sorted = new ArrayList<>(statuses);
@@ -43,9 +47,13 @@ public final class BuffHud {
         return shown;
     }
 
+    /**
+     * Only effects longer than the blink window blink, so short ones do not blink from the start.
+     */
     private static boolean isBlinkedOut(final BuffStatus status,
                                         final long now) {
-        boolean blinking = status.remainingMillis() <= BLINK_THRESHOLD_MS;
+        boolean blinking = status.totalMillis() > BLINK_THRESHOLD_MS
+                && status.remainingMillis() <= BLINK_THRESHOLD_MS;
         return blinking && (now / BLINK_PERIOD_MS) % 2 != 0;
     }
 }
