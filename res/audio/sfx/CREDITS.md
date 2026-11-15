@@ -347,3 +347,11 @@ documented below for completeness.
 - Source: https://www.voicebooking.com/
 - License: Generated voice asset
 - Changes: Renamed only
+
+
+## wave_start_voice.wav
+
+- Original: Generated voice announcement from Voicebooking
+- Source: https://www.voicebooking.com/
+- License: Generated voice asset
+- Changes: Renamed only
