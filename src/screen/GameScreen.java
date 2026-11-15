@@ -1449,8 +1449,12 @@ public class GameScreen extends Screen {
         if (countdown == this.lastCountdown)
             return;
         this.lastCountdown = countdown;
-        if (countdown == 0)
+        if (countdown == 0) {
             AudioManager.playSFX("audio/sfx/countdown_go.wav");
+            if (!isBossLevel(this.level)) {
+                AudioManager.playSFX("audio/sfx/wave_start_voice.wav");
+            }
+        }
         else if (countdown <= 3)
             AudioManager.playSFX("audio/sfx/countdown_beep.wav");
     }
