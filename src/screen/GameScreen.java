@@ -564,6 +564,8 @@ public class GameScreen extends Screen {
 			// Boss stages start the boss music right away, so it already plays
 			// during the countdown instead of switching when the boss appears.
 			AudioManager.playBGM("audio/bgm/music_boss.wav");
+
+            AudioManager.playSFX("audio/sfx/boss_warning_voice.wav");
 			this.isLowHealthBGM = false;
 		} else {
 			AudioManager.playBGM("audio/bgm/music_game.wav");
