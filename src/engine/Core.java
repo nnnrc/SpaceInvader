@@ -525,6 +525,16 @@ public final class Core {
 	}
 
 	/**
+	 * Controls access to the application window, so screens can switch
+	 * the active input method locale (e.g. for Korean name input).
+	 *
+	 * @return Application frame.
+	 */
+	public static Frame getFrame() {
+		return frame;
+	}
+
+	/**
 	 * Controls access to the file manager.
 	 *
 	 * @return Application file manager.
