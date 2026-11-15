@@ -4,10 +4,12 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import campaign.CampaignStageData;
 import engine.Cooldown;
 import engine.Core;
+import engine.Frame;
 import engine.GameState;
 import engine.GameplayConfig;
 import engine.Score;
@@ -62,6 +64,11 @@ public class ScoreScreen extends Screen {
 	private int nameCharSelected;
 	/** Time between changes in user selection. */
 	private Cooldown selectionCooldown;
+	/** Whether the name field is currently composing Korean text. */
+	private boolean koreanInputMode;
+	/** Whether Tab was already held down last frame, so switching the
+	 * input language only fires once per key press. */
+	private boolean tabWasDown;
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -182,38 +189,82 @@ public class ScoreScreen extends Screen {
 					saveScore();
 			}
 
-			if (this.isNewRecord && this.selectionCooldown.checkFinished()) {
-				if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
-					this.nameCharSelected = this.nameCharSelected == 2 ? 0
-							: this.nameCharSelected + 1;
-					this.selectionCooldown.reset();
-					AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
-				}
-				if (inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
-					this.nameCharSelected = this.nameCharSelected == 0 ? 2
-							: this.nameCharSelected - 1;
-					this.selectionCooldown.reset();
-					AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
-				}
-				if (inputManager.isKeyDown(KeyEvent.VK_UP)) {
-					this.name[this.nameCharSelected] =
-							(char) (this.name[this.nameCharSelected]
-									== LAST_CHAR ? FIRST_CHAR
-							: this.name[this.nameCharSelected] + 1);
-					this.selectionCooldown.reset();
-					AudioManager.playSFX("audio/sfx/name_char_change.wav");
-				}
-				if (inputManager.isKeyDown(KeyEvent.VK_DOWN)) {
-					this.name[this.nameCharSelected] =
-							(char) (this.name[this.nameCharSelected]
-									== FIRST_CHAR ? LAST_CHAR
-							: this.name[this.nameCharSelected] - 1);
-					this.selectionCooldown.reset();
-					AudioManager.playSFX("audio/sfx/name_char_change.wav");
+			if (this.isNewRecord) {
+				boolean tabDown = inputManager.isKeyDown(KeyEvent.VK_TAB);
+				if (tabDown && !this.tabWasDown)
+					toggleInputLanguage();
+				this.tabWasDown = tabDown;
+
+				if (this.koreanInputMode)
+					applyKoreanComposition();
+
+				if (this.selectionCooldown.checkFinished()) {
+					if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
+						this.nameCharSelected = this.nameCharSelected == 2 ? 0
+								: this.nameCharSelected + 1;
+						this.selectionCooldown.reset();
+						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
+					}
+					if (inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
+						this.nameCharSelected = this.nameCharSelected == 0 ? 2
+								: this.nameCharSelected - 1;
+						this.selectionCooldown.reset();
+						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
+					}
+					if (!this.koreanInputMode
+							&& inputManager.isKeyDown(KeyEvent.VK_UP)) {
+						this.name[this.nameCharSelected] =
+								(char) (this.name[this.nameCharSelected]
+										== LAST_CHAR ? FIRST_CHAR
+								: this.name[this.nameCharSelected] + 1);
+						this.selectionCooldown.reset();
+						AudioManager.playSFX("audio/sfx/name_char_change.wav");
+					}
+					if (!this.koreanInputMode
+							&& inputManager.isKeyDown(KeyEvent.VK_DOWN)) {
+						this.name[this.nameCharSelected] =
+								(char) (this.name[this.nameCharSelected]
+										== FIRST_CHAR ? LAST_CHAR
+								: this.name[this.nameCharSelected] - 1);
+						this.selectionCooldown.reset();
+						AudioManager.playSFX("audio/sfx/name_char_change.wav");
+					}
 				}
 			}
 		}
 
+	}
+
+	/**
+	 * Switches the name field between English and Korean input, and asks
+	 * the OS input method to follow, so physical keystrokes start composing
+	 * Hangul instead of producing raw Latin characters.
+	 */
+	private void toggleInputLanguage() {
+		this.koreanInputMode = !this.koreanInputMode;
+		Frame frame = Core.getFrame();
+		if (frame != null)
+			frame.selectInputLocale(this.koreanInputMode
+					? Locale.KOREAN : Locale.ENGLISH);
+		inputManager.clearComposingText();
+		AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
+	}
+
+	/**
+	 * Shows the Hangul syllable the input method is currently composing in
+	 * the selected name slot, and locks in the slot once that syllable is
+	 * committed (e.g. ㅎ+ㅏ+ㄴ composes into 한).
+	 */
+	private void applyKoreanComposition() {
+		String composing = inputManager.getComposingText();
+		if (!composing.isEmpty())
+			this.name[this.nameCharSelected] =
+					composing.charAt(composing.length() - 1);
+
+		String committed = inputManager.consumeCommittedText();
+		if (!committed.isEmpty())
+			this.name[this.nameCharSelected] =
+					committed.charAt(committed.length() - 1);
 	}
 
 	/**
@@ -250,7 +301,7 @@ public class ScoreScreen extends Screen {
                     this.shipsDestroyed,accuracy,this.isNewRecord,this.name,this.nameCharSelected,
                     this.runUnlocks,this.inputDelay.checkFinished(),
                     this.stageFailed && !this.infiniteMode ? this.level : 0, this.gameCleared,
-                    this.modeLabel);
+                    this.modeLabel, this.koreanInputMode);
             drawManager.completeDrawing(this); return;
         }
 
@@ -263,7 +314,8 @@ public class ScoreScreen extends Screen {
         drawManager.drawModeLabel(this, this.modeLabel, this.isNewRecord);
 
 		if (this.isNewRecord)
-			drawManager.drawNameInput(this, this.name, this.nameCharSelected);
+			drawManager.drawNameInput(this, this.name, this.nameCharSelected,
+					this.koreanInputMode);
 
 		drawManager.completeDrawing(this);
 	}
