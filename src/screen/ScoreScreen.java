@@ -4,7 +4,6 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 import campaign.CampaignStageData;
 import engine.Cooldown;
@@ -179,6 +178,7 @@ public class ScoreScreen extends Screen {
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
+				leaveKoreanInputMode();
 			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 				// Play again.
 				AudioManager.playSFX("audio/sfx/menu_select.wav");
@@ -187,6 +187,7 @@ public class ScoreScreen extends Screen {
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
+				leaveKoreanInputMode();
 			}
 
 			if (this.isNewRecord) {
@@ -203,12 +204,14 @@ public class ScoreScreen extends Screen {
 						this.nameCharSelected = this.nameCharSelected == 2 ? 0
 								: this.nameCharSelected + 1;
 						this.selectionCooldown.reset();
+						clearKoreanComposition();
 						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
 					}
 					if (inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
 						this.nameCharSelected = this.nameCharSelected == 0 ? 2
 								: this.nameCharSelected - 1;
 						this.selectionCooldown.reset();
+						clearKoreanComposition();
 						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
 					}
 					if (!this.koreanInputMode
@@ -236,35 +239,65 @@ public class ScoreScreen extends Screen {
 	}
 
 	/**
-	 * Switches the name field between English and Korean input, and asks
-	 * the OS input method to follow, so physical keystrokes start composing
-	 * Hangul instead of producing raw Latin characters.
+	 * Switches the name field between English and Korean input. Korean
+	 * mode hands keyboard focus to the frame's invisible IME proxy field,
+	 * so the OS input method actually engages and composes Hangul, instead
+	 * of only producing raw Latin characters as it did before.
 	 */
 	private void toggleInputLanguage() {
 		this.koreanInputMode = !this.koreanInputMode;
 		Frame frame = Core.getFrame();
-		if (frame != null)
-			frame.selectInputLocale(this.koreanInputMode
-					? Locale.KOREAN : Locale.ENGLISH);
-		inputManager.clearComposingText();
+		if (frame != null) {
+			if (this.koreanInputMode)
+				frame.focusKoreanInput();
+			else
+				frame.focusGameInput();
+		}
 		AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
 	}
 
 	/**
-	 * Shows the Hangul syllable the input method is currently composing in
-	 * the selected name slot, and locks in the slot once that syllable is
-	 * committed (e.g. ㅎ+ㅏ+ㄴ composes into 한).
+	 * Restores normal keyboard focus and the English input context,
+	 * regardless of which input mode the name field was left in. Must run
+	 * whenever this screen is left (Space/Esc), not only on a Tab
+	 * press — otherwise leaving while still in Korean mode would carry a
+	 * Korean-engaged input context into the next screen, where it can
+	 * swallow keys like Space and Enter that a CJK input method treats as
+	 * its own (confirm/candidate-select) rather than passing them through.
+	 */
+	private void leaveKoreanInputMode() {
+		Frame frame = Core.getFrame();
+		if (frame != null)
+			frame.focusGameInput();
+	}
+
+	/**
+	 * Shows whatever the IME proxy field currently holds in the selected
+	 * name slot: a Hangul syllable still being composed from jamo
+	 * keystrokes, or one already committed (e.g. ㅎ+ㅏ+ㄴ composes into
+	 * 한). Swing exposes both the same way through the field's text, so
+	 * this always just mirrors its last character.
 	 */
 	private void applyKoreanComposition() {
-		String composing = inputManager.getComposingText();
+		Frame frame = Core.getFrame();
+		if (frame == null)
+			return;
+		String composing = frame.getComposingName();
 		if (!composing.isEmpty())
 			this.name[this.nameCharSelected] =
 					composing.charAt(composing.length() - 1);
+	}
 
-		String committed = inputManager.consumeCommittedText();
-		if (!committed.isEmpty())
-			this.name[this.nameCharSelected] =
-					committed.charAt(committed.length() - 1);
+	/**
+	 * Clears the IME proxy field, so moving to a different name slot (or
+	 * leaving Korean mode) does not carry over a previous slot's syllable.
+	 */
+	private void clearKoreanComposition() {
+		if (this.koreanInputMode) {
+			Frame frame = Core.getFrame();
+			if (frame != null)
+				frame.clearComposingName();
+		}
 	}
 
 	/**
