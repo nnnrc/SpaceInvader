@@ -525,8 +525,8 @@ public final class Core {
 	}
 
 	/**
-	 * Controls access to the application window, so screens can switch
-	 * the active input method locale (e.g. for Korean name input).
+	 * Controls access to the application window, so screens can hand
+	 * keyboard focus to its IME proxy field for Korean name input.
 	 *
 	 * @return Application frame.
 	 */
