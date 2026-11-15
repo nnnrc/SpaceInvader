@@ -1,40 +1,51 @@
 package entity.item;
 
+import entity.PlayerStatus;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
-/** Builds the HUD lines for the buffs currently active. */
+/** Builds the list of effects the HUD shows: item buffs and the slow debuff. */
 public final class BuffHud {
 
-    /** At or below this many remaining seconds, the line blinks. */
-    private static final long BLINK_THRESHOLD_SECONDS = 2;
-    /** Blink half-period, in milliseconds. */
+    static final String SLOW_NAME = "Slowed";
+    private static final long BLINK_THRESHOLD_MS = 2000;
     private static final long BLINK_PERIOD_MS = 250;
 
     private BuffHud() {
     }
 
-    public static List<String> buildLines(final Map<String, Long> remaining,
-                                          final long nowMs) {
-        List<Map.Entry<String, Long>> entries =
-                new ArrayList<Map.Entry<String, Long>>(remaining.entrySet());
-        Collections.sort(entries, new Comparator<Map.Entry<String, Long>>() {
-            @Override
-            public int compare(final Map.Entry<String, Long> left,
-                               final Map.Entry<String, Long> right) {
-                return left.getValue().compareTo(right.getValue());
-            }
-        });
+    /** Returns the active item buffs plus the slow debuff, if the player is slowed. */
+    public static List<BuffStatus> collect(final BuffManager buffManager,
+                                           final PlayerStatus playerStatus, final long now) {
+        List<BuffStatus> statuses =
+                new ArrayList<>(buffManager.getActiveBuffStatuses(now));
 
-        List<String> lines = new ArrayList<String>();
-        for (Map.Entry<String, Long> entry : entries) {
-            boolean blinking = entry.getValue() <= BLINK_THRESHOLD_SECONDS;
-            if (!blinking || (nowMs / BLINK_PERIOD_MS) % 2 == 0)
-                lines.add(entry.getKey());
+        long slowLeft = playerStatus.getSlowRemainingMillis();
+        if (slowLeft > 0)
+            statuses.add(new BuffStatus(SLOW_NAME, slowLeft,
+                    PlayerStatus.getSlowDuration(), BuffStatus.Kind.DEBUFF));
+
+        return statuses;
+    }
+
+    /** Sorts effects by time left and drops those in the hidden half of their blink. */
+    public static List<BuffStatus> visible(final List<BuffStatus> statuses,
+                                           final long now) {
+        List<BuffStatus> sorted = new ArrayList<>(statuses);
+        sorted.sort(Comparator.comparingLong(BuffStatus::remainingMillis));
+
+        List<BuffStatus> shown = new ArrayList<>();
+        for (BuffStatus status : sorted) {
+            if (!isBlinkedOut(status, now))
+                shown.add(status);
         }
-        return lines;
+        return shown;
+    }
+
+    private static boolean isBlinkedOut(final BuffStatus status,
+                                        final long now) {
+        boolean blinking = status.remainingMillis() <= BLINK_THRESHOLD_MS;
+        return blinking && (now / BLINK_PERIOD_MS) % 2 != 0;
     }
 }

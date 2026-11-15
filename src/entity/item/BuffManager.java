@@ -77,20 +77,4 @@ public class BuffManager {
 
         return statuses;
     }
-
-    public Map<String, Long> getActiveBuffsRemainingTime() {
-        Map<String, Long> remainingTimes = new HashMap<>();
-        long currentTime = System.currentTimeMillis();
-
-        for (Map.Entry<Item, Long> entry : this.activeBuffs.entrySet()) {
-            long remaining = Math.max(
-                    0,
-                    (entry.getValue() - currentTime) / 1000
-            );
-
-            remainingTimes.put(entry.getKey().getName(), remaining);
-        }
-
-        return remainingTimes;
-    }
 }
