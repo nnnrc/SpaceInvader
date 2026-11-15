@@ -36,6 +36,7 @@ public class Hyperfire extends Item {
     @Override
     public void removeEffect(final Ship ship) {
         ship.setHyperfireEnabled(false);
+        AudioManager.playSFX("audio/sfx/item_buff_expire.wav");
     }
 
     /**
