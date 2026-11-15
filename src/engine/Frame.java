@@ -1,6 +1,7 @@
 package engine;
 
 import java.awt.Insets;
+import java.util.Locale;
 
 import javax.swing.JFrame;
 
@@ -46,6 +47,28 @@ public class Frame extends JFrame {
 		addKeyListener(Core.getInputManager());
 		getContentPane().addMouseListener(Core.getInputManager());
 		getContentPane().addMouseMotionListener(Core.getInputManager());
+
+		// Tab is used in-game (e.g. to switch the name input language), so
+		// it must not be swallowed by Swing's focus traversal instead.
+		setFocusTraversalKeysEnabled(false);
+
+		// Lets the OS input method (e.g. a Korean IME) compose text while
+		// this frame holds keyboard focus, instead of only raw key codes.
+		enableInputMethods(true);
+		addInputMethodListener(Core.getInputManager());
+	}
+
+	/**
+	 * Switches the active input method's locale, so screens can offer a
+	 * Korean/English input toggle without the player leaving the game to
+	 * change their OS input method.
+	 *
+	 * @param locale
+	 *               Locale to request from the input context.
+	 */
+	public final void selectInputLocale(final Locale locale) {
+		if (getInputContext() != null)
+			getInputContext().selectInputMethod(locale);
 	}
 
 	/**
