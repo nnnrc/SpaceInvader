@@ -883,13 +883,68 @@ public final class DrawManager {
                     score.getScore());
             int rowY = screen.getHeight() / 4
                     + fontRegularMetrics.getHeight() * (i + 1) * 2;
-            drawCenteredRegularString(screen, scoreString, rowY);
+            int stringWidth = mixedFontStringWidth(scoreString);
+            drawMixedFontString(scoreString,
+                    screen.getWidth() / 2 - stringWidth / 2, rowY);
             drawColorGrid(RankBadge.forRank(i + 1), screen.getWidth() / 2
-                    - fontRegularMetrics.stringWidth(scoreString) / 2
+                    - stringWidth / 2
                     - RankBadge.WIDTH * 2 - 12,
                     rowY - 5 - RankBadge.HEIGHT - 4, 2);
             i++;
         }
+    }
+
+    /**
+     * Measures a string the way {@link #drawMixedFontString} draws it,
+     * i.e. per character, picking the Korean fallback font for anything
+     * the regular pixel font can't display (such as a Hangul high score
+     * name) instead of the single-font width the pixel font alone would
+     * report.
+     *
+     * @param string
+     *               String to measure.
+     * @return Width of the string in pixels, as it will actually be drawn.
+     */
+    private int mixedFontStringWidth(final String string) {
+        int width = 0;
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            width += backBufferGraphics.getFontMetrics(fontForChar(c))
+                    .charWidth(c);
+        }
+        return width;
+    }
+
+    /**
+     * Draws a string left-to-right from the given position, picking the
+     * regular pixel font or the Korean fallback font per character (e.g.
+     * a Hangul high score name next to its all-ASCII score padding), with
+     * antialiasing off so the Korean fallback keeps the same crisp pixel
+     * look as the regular font.
+     *
+     * @param string
+     *                Text to draw.
+     * @param x
+     *                Left edge to start drawing at.
+     * @param y
+     *                Baseline to draw the text on.
+     */
+    private void drawMixedFontString(final String string, final int x,
+            final int y) {
+        Font originalFont = backBufferGraphics.getFont();
+        Object originalAntialiasing = setTextAntialiasing(false);
+        int positionX = x;
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            Font charFont = fontForChar(c);
+            FontMetrics charMetrics = backBufferGraphics
+                    .getFontMetrics(charFont);
+            backBufferGraphics.setFont(charFont);
+            backBufferGraphics.drawString(Character.toString(c), positionX, y);
+            positionX += charMetrics.charWidth(c);
+        }
+        restoreTextAntialiasing(originalAntialiasing);
+        backBufferGraphics.setFont(originalFont);
     }
 
     /**
@@ -1627,35 +1682,26 @@ public final class DrawManager {
 
         // 3 letters/syllables name. fontRegularMetrics.getWidths() only
         // covers Latin-1 (code points 0-255), so Hangul syllables (code
-        // points above 0xAC00) need per-character metrics instead.
-        Font[] charFonts = new Font[3];
+        // points above 0xAC00) need the mixed-font, per-character metrics
+        // that drawMixedFontString/mixedFontStringWidth already compute.
         int[] charWidths = new int[3];
-        for (int i = 0; i < 3; i++) {
-            charFonts[i] = fontForChar(name[i]);
-            charWidths[i] = backBufferGraphics.getFontMetrics(charFonts[i])
-                    .charWidth(name[i]);
-        }
+        for (int i = 0; i < 3; i++)
+            charWidths[i] = mixedFontStringWidth(Character.toString(name[i]));
         int spaceWidth = fontRegularMetrics.charWidth(' ');
         int totalWidth = charWidths[0] + charWidths[1] + charWidths[2]
                 + spaceWidth * 2;
         int positionX = screen.getWidth() / 2 - totalWidth / 2;
 
-        Font originalFont = backBufferGraphics.getFont();
-        Object originalAntialiasing = setTextAntialiasing(false);
         for (int i = 0; i < 3; i++) {
             if (i == nameCharSelected)
                 backBufferGraphics.setColor(Color.GREEN);
             else
                 backBufferGraphics.setColor(Color.WHITE);
 
-            backBufferGraphics.setFont(charFonts[i]);
-            backBufferGraphics.drawString(Character.toString(name[i]),
-                    positionX,
+            drawMixedFontString(Character.toString(name[i]), positionX,
                     y + spacing * 2);
             positionX += charWidths[i] + spaceWidth;
         }
-        restoreTextAntialiasing(originalAntialiasing);
-        backBufferGraphics.setFont(originalFont);
     }
 
     /**
