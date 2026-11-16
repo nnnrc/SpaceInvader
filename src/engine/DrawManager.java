@@ -1651,9 +1651,17 @@ public final class DrawManager {
 
     public void completeDrawing(final Screen screen) {
         try {
-            if (graphics != null)
+            if (graphics != null) {
                 graphics.drawImage(backBuffer, frame.getInsets().left,
                         frame.getInsets().top, frame);
+                // Our own blit repaints the whole frame every tick, which
+                // would otherwise erase any real Swing component (e.g. a
+                // visible name-input field) layered on top of it, since
+                // Swing's own repaint scheduling has no idea we just drew
+                // over it. Forcing those components to repaint immediately
+                // right after our blit keeps them visible.
+                frame.paintOverlays();
+            }
         } finally {
             backBufferGraphics.dispose();
             if (graphics != null)
@@ -1717,6 +1725,19 @@ public final class DrawManager {
     private Font fontForChar(final char c) {
         if (fontRegular.canDisplay(c))
             return fontRegular;
+        return fontKorean != null ? fontKorean : fontRegular;
+    }
+
+    /**
+     * Returns the Korean fallback font (Galmuri14), so screens can use it
+     * directly for Swing components that can only render with a single
+     * font, such as the visible name-input text field — Galmuri14 covers
+     * Hangul, Latin letters and digits, so it alone is enough there.
+     *
+     * @return The Korean fallback font, or the regular pixel font if it
+     *         failed to load.
+     */
+    public Font getKoreanFont() {
         return fontKorean != null ? fontKorean : fontRegular;
     }
 
