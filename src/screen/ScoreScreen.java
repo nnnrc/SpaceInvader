@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import javax.swing.JTextField;
+
 import campaign.CampaignStageData;
 import engine.Cooldown;
 import engine.Core;
@@ -68,6 +70,15 @@ public class ScoreScreen extends Screen {
 	/** Whether Tab was already held down last frame, so switching the
 	 * input language only fires once per key press. */
 	private boolean tabWasDown;
+	/**
+	 * Visible text field used while composing a Korean name. This is a
+	 * rendering spike (SCRUM-12 Subtask A): it proves a real, on-screen
+	 * Swing component can be layered on top of this game's own per-frame
+	 * drawing without flickering, by piggybacking on the existing Tab/
+	 * Korean-mode toggle. Subtask B replaces the toggle and the fixed
+	 * 3-slot cycling above with free typing directly into this field.
+	 */
+	private final JTextField nameField = new JTextField();
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -113,6 +124,23 @@ public class ScoreScreen extends Screen {
 		this.nameCharSelected = 0;
 		this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
 		this.selectionCooldown.reset();
+
+		// Rough placement near the existing name-input row; Subtask C
+		// will compute this from the real layout once the surrounding
+		// chrome is redrawn for free-length names.
+		final int fieldWidth = 160;
+		final int fieldHeight = 24;
+		this.nameField.setBounds((width - fieldWidth) / 2, height / 2 + 30,
+				fieldWidth, fieldHeight);
+		this.nameField.setFont(Core.getDrawManager().getKoreanFont()
+				.deriveFont(14f));
+		this.nameField.setBorder(null);
+		// Tab/arrows/Escape/Space must keep updating the shared
+		// InputManager even while this field (not the main frame) has
+		// keyboard focus, and Tab must reach that listener rather than
+		// being consumed by the field's own focus-traversal handling.
+		this.nameField.setFocusTraversalKeysEnabled(false);
+		this.nameField.addKeyListener(Core.getInputManager());
 
 		try {
 			this.highScores = Core.getFileManager().loadHighScores();
@@ -196,6 +224,8 @@ public class ScoreScreen extends Screen {
 					toggleInputLanguage();
 				this.tabWasDown = tabDown;
 
+				applyDigitInput();
+
 				if (this.koreanInputMode)
 					applyKoreanComposition();
 
@@ -240,64 +270,83 @@ public class ScoreScreen extends Screen {
 
 	/**
 	 * Switches the name field between English and Korean input. Korean
-	 * mode hands keyboard focus to the frame's invisible IME proxy field,
-	 * so the OS input method actually engages and composes Hangul, instead
-	 * of only producing raw Latin characters as it did before.
+	 * mode makes this screen's own {@link #nameField} visible (layered on
+	 * top of the game's drawing via {@link Frame#addOverlayComponent}) and
+	 * gives it keyboard focus, so the OS input method actually engages and
+	 * composes Hangul, instead of only producing raw Latin characters.
 	 */
 	private void toggleInputLanguage() {
 		this.koreanInputMode = !this.koreanInputMode;
 		Frame frame = Core.getFrame();
-		if (frame != null) {
-			if (this.koreanInputMode)
-				frame.focusKoreanInput();
-			else
-				frame.focusGameInput();
+		if (frame == null)
+			return;
+		if (this.koreanInputMode) {
+			this.nameField.setText("");
+			frame.addOverlayComponent(this.nameField);
+			this.nameField.requestFocusInWindow();
+		} else {
+			frame.removeOverlayComponent(this.nameField);
+			frame.requestFocusInWindow();
 		}
 		AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
 	}
 
 	/**
-	 * Restores normal keyboard focus and the English input context,
-	 * regardless of which input mode the name field was left in. Must run
-	 * whenever this screen is left (Space/Esc), not only on a Tab
-	 * press — otherwise leaving while still in Korean mode would carry a
-	 * Korean-engaged input context into the next screen, where it can
-	 * swallow keys like Space and Enter that a CJK input method treats as
-	 * its own (confirm/candidate-select) rather than passing them through.
+	 * Restores normal keyboard focus, regardless of which input mode the
+	 * name field was left in. Must run whenever this screen is left
+	 * (Space/Esc), not only on a Tab press — otherwise leaving while
+	 * {@link #nameField} is still showing and focused would carry its
+	 * focus (and the input method engaged on it) into the next screen.
 	 */
 	private void leaveKoreanInputMode() {
 		Frame frame = Core.getFrame();
-		if (frame != null)
-			frame.focusGameInput();
+		if (frame == null)
+			return;
+		if (this.koreanInputMode)
+			frame.removeOverlayComponent(this.nameField);
+		frame.requestFocusInWindow();
 	}
 
 	/**
-	 * Shows whatever the IME proxy field currently holds in the selected
+	 * Types a digit (0-9, main row or numpad) into the selected name slot,
+	 * working the same way in both English and Korean input mode.
+	 */
+	private void applyDigitInput() {
+		int pressed = inputManager.consumeLastPressedKey();
+		Character digit = null;
+		if (pressed >= KeyEvent.VK_0 && pressed <= KeyEvent.VK_9)
+			digit = (char) pressed;
+		else if (pressed >= KeyEvent.VK_NUMPAD0 && pressed <= KeyEvent.VK_NUMPAD9)
+			digit = (char) ('0' + (pressed - KeyEvent.VK_NUMPAD0));
+
+		if (digit == null)
+			return;
+
+		this.name[this.nameCharSelected] = digit;
+		AudioManager.playSFX("audio/sfx/name_char_change.wav");
+	}
+
+	/**
+	 * Shows whatever {@link #nameField} currently holds in the selected
 	 * name slot: a Hangul syllable still being composed from jamo
 	 * keystrokes, or one already committed (e.g. ㅎ+ㅏ+ㄴ composes into
 	 * 한). Swing exposes both the same way through the field's text, so
 	 * this always just mirrors its last character.
 	 */
 	private void applyKoreanComposition() {
-		Frame frame = Core.getFrame();
-		if (frame == null)
-			return;
-		String composing = frame.getComposingName();
+		String composing = this.nameField.getText();
 		if (!composing.isEmpty())
 			this.name[this.nameCharSelected] =
 					composing.charAt(composing.length() - 1);
 	}
 
 	/**
-	 * Clears the IME proxy field, so moving to a different name slot (or
+	 * Clears {@link #nameField}, so moving to a different name slot (or
 	 * leaving Korean mode) does not carry over a previous slot's syllable.
 	 */
 	private void clearKoreanComposition() {
-		if (this.koreanInputMode) {
-			Frame frame = Core.getFrame();
-			if (frame != null)
-				frame.clearComposingName();
-		}
+		if (this.koreanInputMode)
+			this.nameField.setText("");
 	}
 
 	/**
