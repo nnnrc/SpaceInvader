@@ -9,7 +9,10 @@ import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -1652,15 +1655,20 @@ public final class DrawManager {
     public void completeDrawing(final Screen screen) {
         try {
             if (graphics != null) {
-                graphics.drawImage(backBuffer, frame.getInsets().left,
-                        frame.getInsets().top, frame);
-                // Our own blit repaints the whole frame every tick, which
-                // would otherwise erase any real Swing component (e.g. a
-                // visible name-input field) layered on top of it, since
-                // Swing's own repaint scheduling has no idea we just drew
-                // over it. Forcing those components to repaint immediately
-                // right after our blit keeps them visible.
-                frame.paintOverlays();
+                Insets insets = frame.getInsets();
+                Rectangle imageBounds = new Rectangle(insets.left,
+                        insets.top, backBuffer.getWidth(),
+                        backBuffer.getHeight());
+                // Clip out any overlay component's area (e.g. a visible
+                // name-input field) so our blit never paints over it,
+                // leaving Swing free to repaint that area on its own, on
+                // the event thread, instead of us forcing it from this
+                // render thread every frame.
+                Shape originalClip = graphics.getClip();
+                graphics.setClip(frame.clipExcludingOverlays(imageBounds));
+                graphics.drawImage(backBuffer, insets.left, insets.top,
+                        frame);
+                graphics.setClip(originalClip);
             }
         } finally {
             backBufferGraphics.dispose();
