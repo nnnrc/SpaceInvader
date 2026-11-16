@@ -18,7 +18,7 @@ SCRUM-
 - [ ] Title is `type: summary (SCRUM-n)`, and the PR covers one Jira issue
 - [ ] Branch is `type/SCRUM-n-short-name`, up to date with `main`
 - [ ] CI is green
-- [ ] A teammate (not the author, TL, or Collaborator) has claimed the Level 2 review with 👀
+- [ ] Ready for a Level 2 review by any teammate (not the author, TL, or Collaborator)
 
 ### Level 2 – Peer reviewer
 - [ ] Reviewed with **Comment** or **Request changes** (do **not** Approve)
