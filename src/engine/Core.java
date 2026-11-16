@@ -525,8 +525,10 @@ public final class Core {
 	}
 
 	/**
-	 * Controls access to the application window, so screens can hand
-	 * keyboard focus to its IME proxy field for Korean name input.
+	 * Controls access to the application window, so screens can layer
+	 * their own Swing components (e.g. a visible name-input field) on
+	 * top of the game's own drawing via
+	 * {@link Frame#addOverlayComponent(javax.swing.JComponent)}.
 	 *
 	 * @return Application frame.
 	 */
