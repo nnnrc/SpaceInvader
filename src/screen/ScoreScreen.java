@@ -1,15 +1,16 @@
 package screen;
 
 import java.awt.Color;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JTextField;
+import javax.swing.text.AbstractDocument;
 
 import campaign.CampaignStageData;
-import engine.Cooldown;
 import engine.Core;
 import engine.Frame;
 import engine.GameState;
@@ -28,14 +29,8 @@ import java.util.ArrayList;
  */
 public class ScoreScreen extends Screen {
 
-	/** Milliseconds between changes in user selection. */
-	private static final int SELECTION_TIME = 200;
 	/** Maximum number of high scores. */
 	private static final int MAX_HIGH_SCORE_NUM = 7;
-	/** Code of first mayus character. */
-	private static final int FIRST_CHAR = 65;
-	/** Code of last mayus character. */
-	private static final int LAST_CHAR = 90;
 
 	/** Level (stage) that was being played when the game ended. */
 	private int level;
@@ -60,24 +55,16 @@ public class ScoreScreen extends Screen {
 	private List<Score> highScores;
 	/** Checks if current score is a new high score. */
 	private boolean isNewRecord;
-	/** Player name for record input. */
-	private char[] name;
-	/** Character of players name selected for change. */
-	private int nameCharSelected;
-	/** Time between changes in user selection. */
-	private Cooldown selectionCooldown;
-	/** Whether the name field is currently composing Korean text. */
-	private boolean koreanInputMode;
-	/** Whether Tab was already held down last frame, so switching the
-	 * input language only fires once per key press. */
-	private boolean tabWasDown;
+	/** Player name for record input, typed freely into {@link #nameField}. */
+	private String name = "";
+	/** Whether the name has been confirmed (Enter) and saved already. */
+	private boolean nameConfirmed;
 	/**
-	 * Visible text field used while composing a Korean name. This is a
-	 * rendering spike (SCRUM-12 Subtask A): it proves a real, on-screen
-	 * Swing component can be layered on top of this game's own per-frame
-	 * drawing without flickering, by piggybacking on the existing Tab/
-	 * Korean-mode toggle. Subtask B replaces the toggle and the fixed
-	 * 3-slot cycling above with free typing directly into this field.
+	 * Visible text field the player types their name into directly. Shown
+	 * and focused for the whole time a new record's name has not been
+	 * confirmed yet; Swing handles both plain typing and IME composition
+	 * on it natively (see Frame.addOverlayComponent/clipExcludingOverlays
+	 * for how it coexists with this game's own per-frame drawing).
 	 */
 	private final JTextField nameField = new JTextField();
 
@@ -121,34 +108,24 @@ public class ScoreScreen extends Screen {
 		this.bulletsShot = gameState.getBulletsShot();
 		this.shipsDestroyed = gameState.getShipsDestroyed();
 		this.isNewRecord = false;
-		this.name = "AAA".toCharArray();
-		this.nameCharSelected = 0;
-		this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
-		this.selectionCooldown.reset();
 
-		// Rough placement near the existing name-input row; Subtask C
-		// will compute this from the real layout once the surrounding
-		// chrome is redrawn for free-length names.
-		final int fieldWidth = 160;
-		final int fieldHeight = 24;
-		this.nameField.setBounds((width - fieldWidth) / 2, height / 2 + 30,
-				fieldWidth, fieldHeight);
 		this.nameField.setFont(Core.getDrawManager().getKoreanFont()
 				.deriveFont(14f));
 		this.nameField.setBorder(null);
 		// Matches the game's black background/green-on-black text instead
-		// of Swing's default white field, since our own blit now leaves
-		// this exact area for Swing alone to paint (see
+		// of Swing's default white field, since our own blit leaves this
+		// exact area for Swing alone to paint (see
 		// Frame.clipExcludingOverlays).
 		this.nameField.setBackground(Color.BLACK);
 		this.nameField.setForeground(Color.GREEN);
 		this.nameField.setCaretColor(Color.GREEN);
-		// Tab/arrows/Escape/Space must keep updating the shared
-		// InputManager even while this field (not the main frame) has
-		// keyboard focus, and Tab must reach that listener rather than
-		// being consumed by the field's own focus-traversal handling.
 		this.nameField.setFocusTraversalKeysEnabled(false);
+		// Escape/Space must keep updating the shared InputManager even
+		// while this field (not the main frame) has keyboard focus.
 		this.nameField.addKeyListener(Core.getInputManager());
+		((AbstractDocument) this.nameField.getDocument())
+				.setDocumentFilter(new NameInputFilter());
+		this.nameField.addActionListener(event -> confirmName());
 
 		try {
 			this.highScores = Core.getFileManager().loadHighScores();
@@ -169,6 +146,7 @@ public class ScoreScreen extends Screen {
 
         if (this.isNewRecord) {
             AudioManager.playSFX("audio/sfx/new_record.wav");
+            showNameField();
         }
 
         RecordsService recordsService = Core.getRecordsService();
@@ -200,6 +178,17 @@ public class ScoreScreen extends Screen {
 	}
 
 	/**
+	 * Disables the global mute key (normally toggled by pressing M on any
+	 * screen) while the player is actively typing their name — otherwise
+	 * a name containing "m"/"M" would toggle audio mute as a side effect
+	 * every time that letter is typed.
+	 */
+	@Override
+	protected boolean usesGlobalMuteKey() {
+		return !(this.isNewRecord && !this.nameConfirmed);
+	}
+
+	/**
 	 * Updates the elements on screen and checks for events.
 	 */
 	protected final void update() {
@@ -207,161 +196,92 @@ public class ScoreScreen extends Screen {
 
 		draw();
 		if (this.inputDelay.checkFinished()) {
+			boolean nameEntryPending = this.isNewRecord && !this.nameConfirmed;
+
 			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-				// Return to main menu.
+				// Cancel (discarding an unconfirmed new record) and
+				// return to the main menu.
 				AudioManager.playSFX("audio/sfx/menu_back.wav");
 				this.returnCode = 1;
 				this.isRunning = false;
-				if (this.isNewRecord)
-					saveScore();
-				leaveKoreanInputMode();
-			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-				// Play again.
+				hideNameField();
+			} else if (!nameEntryPending
+					&& inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+				// Play again. Disabled while a name is still being typed,
+				// so an accidental Space while typing cannot end the
+				// screen before Enter confirms the name.
 				AudioManager.playSFX("audio/sfx/menu_select.wav");
 				// The infinite mode (8) restarts itself instead of the campaign.
 				this.returnCode = this.infiniteMode ? 8 : 2;
 				this.isRunning = false;
-				if (this.isNewRecord)
-					saveScore();
-				leaveKoreanInputMode();
-			}
-
-			if (this.isNewRecord) {
-				boolean tabDown = inputManager.isKeyDown(KeyEvent.VK_TAB);
-				if (tabDown && !this.tabWasDown)
-					toggleInputLanguage();
-				this.tabWasDown = tabDown;
-
-				applyDigitInput();
-
-				if (this.koreanInputMode)
-					applyKoreanComposition();
-
-				if (this.selectionCooldown.checkFinished()) {
-					if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
-						this.nameCharSelected = this.nameCharSelected == 2 ? 0
-								: this.nameCharSelected + 1;
-						this.selectionCooldown.reset();
-						clearKoreanComposition();
-						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
-					}
-					if (inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
-						this.nameCharSelected = this.nameCharSelected == 0 ? 2
-								: this.nameCharSelected - 1;
-						this.selectionCooldown.reset();
-						clearKoreanComposition();
-						AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
-					}
-					if (!this.koreanInputMode
-							&& inputManager.isKeyDown(KeyEvent.VK_UP)) {
-						this.name[this.nameCharSelected] =
-								(char) (this.name[this.nameCharSelected]
-										== LAST_CHAR ? FIRST_CHAR
-								: this.name[this.nameCharSelected] + 1);
-						this.selectionCooldown.reset();
-						AudioManager.playSFX("audio/sfx/name_char_change.wav");
-					}
-					if (!this.koreanInputMode
-							&& inputManager.isKeyDown(KeyEvent.VK_DOWN)) {
-						this.name[this.nameCharSelected] =
-								(char) (this.name[this.nameCharSelected]
-										== FIRST_CHAR ? LAST_CHAR
-								: this.name[this.nameCharSelected] - 1);
-						this.selectionCooldown.reset();
-						AudioManager.playSFX("audio/sfx/name_char_change.wav");
-					}
-				}
+				hideNameField();
 			}
 		}
 
 	}
 
 	/**
-	 * Switches the name field between English and Korean input. Korean
-	 * mode makes this screen's own {@link #nameField} visible (layered on
-	 * top of the game's drawing via {@link Frame#addOverlayComponent}) and
-	 * gives it keyboard focus, so the OS input method actually engages and
-	 * composes Hangul, instead of only producing raw Latin characters.
+	 * Shows and focuses the real, visible name-input field, positioned to
+	 * line up with whichever of the two name-input chrome layouts
+	 * (plain game-over, or the achievement-unlock combined screen) this
+	 * run is about to show.
 	 */
-	private void toggleInputLanguage() {
-		this.koreanInputMode = !this.koreanInputMode;
+	private void showNameField() {
 		Frame frame = Core.getFrame();
 		if (frame == null)
 			return;
-		if (this.koreanInputMode) {
-			this.nameField.setText("");
-			frame.addOverlayComponent(this.nameField);
-			this.nameField.requestFocusInWindow();
-		} else {
-			frame.removeOverlayComponent(this.nameField);
-			frame.requestFocusInWindow();
-		}
-		AudioManager.playSFX("audio/sfx/name_cursor_move.wav");
+		Rectangle bounds = this.runUnlocks.isEmpty()
+				? drawManager.getNameInputFieldBounds(this)
+				: drawManager.getAchievementNameInputFieldBounds(this,
+						this.isNewRecord,
+						this.stageFailed && !this.infiniteMode
+								? this.level : 0,
+						this.runUnlocks.size(), this.modeLabel != null);
+		this.nameField.setBounds(bounds);
+		this.nameField.setText("");
+		frame.addOverlayComponent(this.nameField);
+		this.nameField.requestFocusInWindow();
 	}
 
 	/**
-	 * Restores normal keyboard focus, regardless of which input mode the
-	 * name field was left in. Must run whenever this screen is left
-	 * (Space/Esc), not only on a Tab press — otherwise leaving while
-	 * {@link #nameField} is still showing and focused would carry its
-	 * focus (and the input method engaged on it) into the next screen.
+	 * Removes the name field (if still showing) and returns keyboard
+	 * focus to the main game window. Must run whenever this screen is
+	 * left, regardless of whether the name was ever confirmed — leaving
+	 * the field showing and focused would carry its focus (and the input
+	 * method engaged on it) into the next screen.
 	 */
-	private void leaveKoreanInputMode() {
+	private void hideNameField() {
 		Frame frame = Core.getFrame();
 		if (frame == null)
 			return;
-		if (this.koreanInputMode)
-			frame.removeOverlayComponent(this.nameField);
+		frame.removeOverlayComponent(this.nameField);
 		frame.requestFocusInWindow();
 	}
 
 	/**
-	 * Types a digit (0-9, main row or numpad) into the selected name slot,
-	 * working the same way in both English and Korean input mode.
+	 * Confirms and saves the typed name (Enter), requiring at least one
+	 * character. Does nothing on an empty field, so Enter cannot save a
+	 * blank name.
 	 */
-	private void applyDigitInput() {
-		int pressed = inputManager.consumeLastPressedKey();
-		Character digit = null;
-		if (pressed >= KeyEvent.VK_0 && pressed <= KeyEvent.VK_9)
-			digit = (char) pressed;
-		else if (pressed >= KeyEvent.VK_NUMPAD0 && pressed <= KeyEvent.VK_NUMPAD9)
-			digit = (char) ('0' + (pressed - KeyEvent.VK_NUMPAD0));
-
-		if (digit == null)
+	private void confirmName() {
+		if (this.nameConfirmed)
+			return;
+		String typed = this.nameField.getText();
+		if (typed == null || typed.isEmpty())
 			return;
 
-		this.name[this.nameCharSelected] = digit;
-		AudioManager.playSFX("audio/sfx/name_char_change.wav");
-	}
-
-	/**
-	 * Shows whatever {@link #nameField} currently holds in the selected
-	 * name slot: a Hangul syllable still being composed from jamo
-	 * keystrokes, or one already committed (e.g. ㅎ+ㅏ+ㄴ composes into
-	 * 한). Swing exposes both the same way through the field's text, so
-	 * this always just mirrors its last character.
-	 */
-	private void applyKoreanComposition() {
-		String composing = this.nameField.getText();
-		if (!composing.isEmpty())
-			this.name[this.nameCharSelected] =
-					composing.charAt(composing.length() - 1);
-	}
-
-	/**
-	 * Clears {@link #nameField}, so moving to a different name slot (or
-	 * leaving Korean mode) does not carry over a previous slot's syllable.
-	 */
-	private void clearKoreanComposition() {
-		if (this.koreanInputMode)
-			this.nameField.setText("");
+		this.name = typed;
+		this.nameConfirmed = true;
+		saveScore();
+		hideNameField();
+		AudioManager.playSFX("audio/sfx/menu_select.wav");
 	}
 
 	/**
 	 * Saves the score as a high score.
 	 */
 	private void saveScore() {
-		highScores.add(new Score(new String(this.name), score));
+		highScores.add(new Score(this.name, score));
 		Collections.sort(highScores);
 		if (highScores.size() > MAX_HIGH_SCORE_NUM)
 			highScores.remove(highScores.size() - 1);
@@ -388,15 +308,16 @@ public class ScoreScreen extends Screen {
         float accuracy = this.bulletsShot == 0 ? 1f : (float)this.shipsDestroyed / this.bulletsShot;
         if (!this.runUnlocks.isEmpty()) {
             drawManager.drawAchievementResults(this,this.score,this.livesRemaining,
-                    this.shipsDestroyed,accuracy,this.isNewRecord,this.name,this.nameCharSelected,
+                    this.shipsDestroyed,accuracy,this.isNewRecord,this.nameConfirmed,this.name,
                     this.runUnlocks,this.inputDelay.checkFinished(),
                     this.stageFailed && !this.infiniteMode ? this.level : 0, this.gameCleared,
-                    this.modeLabel, this.koreanInputMode);
+                    this.modeLabel);
             drawManager.completeDrawing(this); return;
         }
 
 		drawManager.drawGameOver(this, this.inputDelay.checkFinished(),
-				this.isNewRecord,this.gameCleared);
+				this.isNewRecord,this.gameCleared,
+				this.isNewRecord && !this.nameConfirmed);
 		if (this.stageFailed && !this.infiniteMode)
 			drawManager.drawStageFailed(this, this.level, this.isNewRecord);
         drawManager.drawResults(this, this.score, this.livesRemaining,
@@ -404,8 +325,7 @@ public class ScoreScreen extends Screen {
         drawManager.drawModeLabel(this, this.modeLabel, this.isNewRecord);
 
 		if (this.isNewRecord)
-			drawManager.drawNameInput(this, this.name, this.nameCharSelected,
-					this.koreanInputMode);
+			drawManager.drawNameInput(this, this.nameConfirmed, this.name);
 
 		drawManager.completeDrawing(this);
 	}
