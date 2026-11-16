@@ -789,8 +789,23 @@ public final class DrawManager {
      */
     public void drawGameOver(final Screen screen, final boolean acceptsInput,
             final boolean isNewRecord, final boolean gameCleared) {
+        drawGameOver(screen, acceptsInput, isNewRecord, gameCleared, false);
+    }
+
+    /**
+     * @param nameEntryPending
+     *                         Whether a new-record name is still being
+     *                         typed (not yet confirmed with Enter); while
+     *                         true, Space does not play again, so the
+     *                         prompt does not claim it does.
+     */
+    public void drawGameOver(final Screen screen, final boolean acceptsInput,
+            final boolean isNewRecord, final boolean gameCleared,
+            final boolean nameEntryPending) {
         String gameOverString = gameCleared ? "Game Clear" : "Game Over";
-        String continueOrExitString = "Press Space to play again, Escape to exit";
+        String continueOrExitString = nameEntryPending
+                ? "Press Escape to cancel"
+                : "Press Space to play again, Escape to exit";
 
         int gameOverY;
 
@@ -879,20 +894,31 @@ public final class DrawManager {
             final List<Score> highScores) {
         backBufferGraphics.setColor(Color.WHITE);
         int i = 0;
-        String scoreString = "";
+
+        // Fixed left/right columns instead of centering each row's full
+        // "name + score" string: names can now be anywhere from 1 to 10
+        // characters (Hangul, English or digits), so centering the whole
+        // line would shift the score to a different X on every row.
+        // Anchoring the rank badge and name to a fixed left margin and
+        // the score to a fixed right margin keeps the score column
+        // aligned regardless of name length.
+        int badgeX = 40;
+        int nameX = badgeX + RankBadge.WIDTH * 2 + 12;
+        int scoreRightX = screen.getWidth() - 40;
 
         for (Score score : highScores) {
-            scoreString = String.format("%s        %04d", score.getName(),
-                    score.getScore());
             int rowY = screen.getHeight() / 4
                     + fontRegularMetrics.getHeight() * (i + 1) * 2;
-            int stringWidth = mixedFontStringWidth(scoreString);
-            drawMixedFontString(scoreString,
-                    screen.getWidth() / 2 - stringWidth / 2, rowY);
-            drawColorGrid(RankBadge.forRank(i + 1), screen.getWidth() / 2
-                    - stringWidth / 2
-                    - RankBadge.WIDTH * 2 - 12,
+
+            drawColorGrid(RankBadge.forRank(i + 1), badgeX,
                     rowY - 5 - RankBadge.HEIGHT - 4, 2);
+
+            drawMixedFontString(score.getName(), nameX, rowY);
+
+            String scoreString = String.format("%04d", score.getScore());
+            int scoreWidth = mixedFontStringWidth(scoreString);
+            drawMixedFontString(scoreString, scoreRightX - scoreWidth, rowY);
+
             i++;
         }
     }
@@ -1677,47 +1703,75 @@ public final class DrawManager {
         }
     }
 
-    public void drawNameInput(final Screen screen, final char[] name,
-            final int nameCharSelected, final boolean koreanMode) {
-        drawNameInputAt(screen, name, nameCharSelected, screen.getHeight()
+    /**
+     * Draws the "New Record!" name-input chrome for the plain (non-
+     * achievement) game-over screen. While still entering a name, this
+     * draws only the heading and instructions — the actual input row is
+     * left blank, since a real, visible text field (positioned via
+     * {@link #getNameInputFieldBounds(Screen)}) sits there and draws its
+     * own text. Once confirmed, that row shows the saved name as plain
+     * drawn text instead.
+     *
+     * @param screen
+     *                  Screen to draw on.
+     * @param confirmed
+     *                  Whether the name has already been confirmed/saved.
+     * @param name
+     *                  The name to show once confirmed; ignored otherwise.
+     */
+    public void drawNameInput(final Screen screen, final boolean confirmed,
+            final String name) {
+        drawNameInputAt(screen, confirmed, name, screen.getHeight()
                 / 4 + fontRegularMetrics.getHeight() * 10,
-                fontRegularMetrics.getHeight() * 2, koreanMode);
+                fontRegularMetrics.getHeight() * 2);
     }
 
-    private void drawNameInputAt(final Screen screen, final char[] name,
-            final int nameCharSelected, final int y, final int spacing,
-            final boolean koreanMode) {
-        String newRecordString = "New Record!";
-        String introduceNameString = "Introduce name: ["
-                + (koreanMode ? "KR" : "EN") + ", Tab to switch]";
+    /**
+     * Returns where the real, visible name-input text field should be
+     * positioned on the plain (non-achievement) game-over screen, so it
+     * lines up with {@link #drawNameInput(Screen, boolean, String)}'s
+     * blank third row.
+     *
+     * @param screen
+     *               Screen the field will be shown on.
+     * @return Field bounds, in the screen's own pixel coordinates.
+     */
+    public Rectangle getNameInputFieldBounds(final Screen screen) {
+        return nameInputFieldBoundsAt(screen, screen.getHeight() / 4
+                + fontRegularMetrics.getHeight() * 10,
+                fontRegularMetrics.getHeight() * 2);
+    }
 
+    private void drawNameInputAt(final Screen screen, final boolean confirmed,
+            final String name, final int y, final int spacing) {
         backBufferGraphics.setColor(Color.GREEN);
-        drawCenteredRegularString(screen, newRecordString, y);
+        drawCenteredRegularString(screen, "New Record!", y);
         backBufferGraphics.setColor(Color.WHITE);
-        drawCenteredRegularString(screen, introduceNameString, y + spacing);
-
-        // 3 letters/syllables name. fontRegularMetrics.getWidths() only
-        // covers Latin-1 (code points 0-255), so Hangul syllables (code
-        // points above 0xAC00) need the mixed-font, per-character metrics
-        // that drawMixedFontString/mixedFontStringWidth already compute.
-        int[] charWidths = new int[3];
-        for (int i = 0; i < 3; i++)
-            charWidths[i] = mixedFontStringWidth(Character.toString(name[i]));
-        int spaceWidth = fontRegularMetrics.charWidth(' ');
-        int totalWidth = charWidths[0] + charWidths[1] + charWidths[2]
-                + spaceWidth * 2;
-        int positionX = screen.getWidth() / 2 - totalWidth / 2;
-
-        for (int i = 0; i < 3; i++) {
-            if (i == nameCharSelected)
-                backBufferGraphics.setColor(Color.GREEN);
-            else
-                backBufferGraphics.setColor(Color.WHITE);
-
-            drawMixedFontString(Character.toString(name[i]), positionX,
+        if (confirmed) {
+            drawCenteredRegularString(screen, "Name saved:", y + spacing);
+            backBufferGraphics.setColor(Color.GREEN);
+            int width = mixedFontStringWidth(name);
+            drawMixedFontString(name, screen.getWidth() / 2 - width / 2,
                     y + spacing * 2);
-            positionX += charWidths[i] + spaceWidth;
+        } else {
+            drawCenteredRegularString(screen,
+                    "Type your name, then press Enter:", y + spacing);
         }
+    }
+
+    /**
+     * Computes the on-screen bounds for the real, visible name-input
+     * field from the same baseline/spacing used to draw the surrounding
+     * chrome, so the field lines up with it regardless of which screen
+     * (plain game-over or achievement-unlock) is showing it.
+     */
+    private Rectangle nameInputFieldBoundsAt(final Screen screen, final int y,
+            final int spacing) {
+        int fieldWidth = 170;
+        int fieldHeight = fontRegularMetrics.getHeight() + 8;
+        int fieldX = screen.getWidth() / 2 - fieldWidth / 2;
+        int fieldY = y + spacing * 2 - fontRegularMetrics.getAscent() - 4;
+        return new Rectangle(fieldX, fieldY, fieldWidth, fieldHeight);
     }
 
     /**
@@ -1795,28 +1849,27 @@ public final class DrawManager {
     }
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput, final int failedStage) {
-        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, name, selected,
+        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, confirmed, name,
                 achievements, acceptsInput, failedStage, false);
     }
 
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput, final int failedStage,
             final boolean gameCleared) {
         drawAchievementResults(screen, score, lives, enemies, accuracy,
-                isNewRecord, name, selected, achievements, acceptsInput,
-                failedStage, gameCleared, null, false);
+                isNewRecord, confirmed, name, achievements, acceptsInput,
+                failedStage, gameCleared, null);
     }
 
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput,
-            final int failedStage, final boolean gameCleared, final String modeLabel,
-            final boolean koreanMode) {
+            final int failedStage, final boolean gameCleared, final String modeLabel) {
         int spacing = fontRegularMetrics.getHeight();
         int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
                 achievements.size());
@@ -1840,7 +1893,7 @@ public final class DrawManager {
         }
         if (isNewRecord) {
             y += spacing;
-            drawNameInputAt(screen, name, selected, y, spacing, koreanMode);
+            drawNameInputAt(screen, confirmed, name, y, spacing);
             y += spacing * 3;
         }
         y += spacing;
@@ -1852,8 +1905,46 @@ public final class DrawManager {
             drawCenteredRegularString(screen, achievement.getName(), y);
         }
         backBufferGraphics.setColor(acceptsInput ? Color.GREEN : Color.GRAY);
-        drawCenteredRegularString(screen, "Space: play again   Esc: menu",
-                screen.getHeight() - spacing);
+        String footer = (isNewRecord && !confirmed)
+                ? "Enter: save name   Esc: cancel"
+                : "Space: play again   Esc: menu";
+        drawCenteredRegularString(screen, footer, screen.getHeight() - spacing);
+    }
+
+    /**
+     * Returns where the real, visible name-input text field should be
+     * positioned on the achievement-unlock combined screen, mirroring
+     * the exact same row-accumulation {@link #drawAchievementResults}
+     * uses internally so the field lines up with its blank name-input
+     * row regardless of how many result rows or achievements precede it.
+     *
+     * @param screen
+     *                         Screen the field will be shown on.
+     * @param isNewRecord
+     *                         If the score is a new high score (must be
+     *                         true for this block to exist at all).
+     * @param failedStage
+     *                         Failed stage number, or zero when no stage
+     *                         failed.
+     * @param achievementCount
+     *                         Number of newly unlocked achievements.
+     * @param hasModeLabel
+     *                         Whether a 5th "mode" result row is shown.
+     * @return Field bounds, in the screen's own pixel coordinates.
+     */
+    public Rectangle getAchievementNameInputFieldBounds(final Screen screen,
+            final boolean isNewRecord, final int failedStage,
+            final int achievementCount, final boolean hasModeLabel) {
+        int spacing = fontRegularMetrics.getHeight();
+        int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
+                achievementCount);
+        if (failedStage > 0)
+            y += spacing;
+        y += spacing * 2;
+        y += spacing * (hasModeLabel ? 5 : 4);
+        if (isNewRecord)
+            y += spacing;
+        return nameInputFieldBoundsAt(screen, y, spacing);
     }
 
     public void drawAchievementList(final Screen screen, final RecordsService service, int y) {
