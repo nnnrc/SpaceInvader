@@ -1,5 +1,6 @@
 package screen;
 
+import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.Collections;
@@ -135,6 +136,13 @@ public class ScoreScreen extends Screen {
 		this.nameField.setFont(Core.getDrawManager().getKoreanFont()
 				.deriveFont(14f));
 		this.nameField.setBorder(null);
+		// Matches the game's black background/green-on-black text instead
+		// of Swing's default white field, since our own blit now leaves
+		// this exact area for Swing alone to paint (see
+		// Frame.clipExcludingOverlays).
+		this.nameField.setBackground(Color.BLACK);
+		this.nameField.setForeground(Color.GREEN);
+		this.nameField.setCaretColor(Color.GREEN);
 		// Tab/arrows/Escape/Space must keep updating the shared
 		// InputManager even while this field (not the main frame) has
 		// keyboard focus, and Tab must reach that listener rather than
