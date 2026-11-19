@@ -13,8 +13,9 @@ public class ControlsSettingsScreen extends Screen {
     private static final int LEFT_OPTION = 0;
     private static final int RIGHT_OPTION = 1;
     private static final int FIRE_OPTION = 2;
-    private static final int BACK_OPTION = 3;
-    private static final int OPTION_COUNT = 4;
+    private static final int RESET_OPTION = 3;
+    private static final int BACK_OPTION = 4;
+    private static final int OPTION_COUNT = BACK_OPTION + 1;
 
     private final Cooldown selectionCooldown;
     private int selectedOption;
@@ -146,6 +147,11 @@ public class ControlsSettingsScreen extends Screen {
             AudioManager.playSFX("audio/sfx/menu_back.wav");
             this.returnCode = 4;
             this.isRunning = false;
+        } else if (this.selectedOption == RESET_OPTION) {
+            ControlsConfig.resetToDefaults();
+            AudioManager.playSFX("audio/sfx/menu_select.wav");
+            this.capturedKeyCode = KeyEvent.VK_SPACE;
+            this.waitingForKeyRelease = inputManager.isKeyDown(KeyEvent.VK_SPACE);
         } else {
             inputManager.clearLastPressedKey();
             this.waitingForKey = true;

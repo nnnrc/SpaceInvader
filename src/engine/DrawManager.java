@@ -1232,12 +1232,12 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.GREEN);
         drawCenteredBigString(screen, "Controls", screen.getHeight() / 5);
 
+        int firstOptionY = getControlsSettingsFirstOptionY(screen);
         for (int i = 0; i < labels.length; i++) {
             backBufferGraphics.setColor(
                     i == selectedOption ? Color.GREEN : Color.WHITE);
             drawCenteredRegularString(screen, labels[i],
-                    screen.getHeight() / 2
-                            + i * fontRegularMetrics.getHeight() * 2);
+                    firstOptionY + i * fontRegularMetrics.getHeight() * 2);
         }
 
         backBufferGraphics.setColor(Color.GRAY);
@@ -1853,8 +1853,12 @@ public final class DrawManager {
 
         return getCenteredOptionAt(screen,
                 getControlsSettingsLabels(selectedOption, waitingForKey),
-                screen.getHeight() / 2, fontRegularMetrics.getHeight() * 2,
-                mouseX, mouseY);
+                getControlsSettingsFirstOptionY(screen),
+                fontRegularMetrics.getHeight() * 2, mouseX, mouseY);
+    }
+
+    private int getControlsSettingsFirstOptionY(final Screen screen) {
+        return screen.getHeight() * 2 / 5;
     }
 
     /**
@@ -1943,7 +1947,7 @@ public final class DrawManager {
      */
     private String[] getControlsSettingsLabels(final int selectedOption,
             final boolean waitingForKey) {
-        String[] labels = { "Move Left", "Move Right", "Fire", "Back" };
+        String[] labels = { "Move Left", "Move Right", "Fire", "Reset to Defaults", "Back" };
         String[] keys = {
                 getKeyDisplayText(ControlsConfig.getKey(ControlsConfig.LEFT)),
                 getKeyDisplayText(ControlsConfig.getKey(ControlsConfig.RIGHT)),

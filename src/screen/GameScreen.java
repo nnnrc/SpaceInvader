@@ -888,7 +888,8 @@ public class GameScreen extends Screen {
 
 		Boss boss = getBossOnScreen();
 		if (boss != null)
-			drawManager.drawEntity(boss, boss.getPositionX(),
+			drawManager.drawEntity(boss,
+					boss.getPositionX() + boss.getHitShakeOffset(),
 					boss.getPositionY());
 
 		for (BossBullet bossBullet : this.bossBullets)

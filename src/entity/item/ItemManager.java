@@ -43,7 +43,9 @@ public class ItemManager {
             Item item = iterator.next();
             if (checkCollision(item, ship)) {
                 item.setCollected(true);
-                AudioManager.playSFX("audio/sfx/item_pickup.wav");
+                if (!(item instanceof ShieldItem) && !(item instanceof Hyperfire) && !(item instanceof ChameleonHull)) {
+                    AudioManager.playSFX("audio/sfx/item_pickup.wav");
+                }
                 this.buffManager.addBuff(item, ship);
                 iterator.remove();
             }
