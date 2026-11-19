@@ -25,6 +25,6 @@ SCRUM-
 - [ ] Posted `Level 2: OK`
 
 ### Level 3 – TL or Collaborator
-- [ ] Approved and squash-merged, branch deleted
+- [ ] Approved and merged with "Create a merge commit" (not squash), branch deleted
 
 <!-- Review Checklist: https://github.com/nnnrc/SpaceInvader/wiki/Review-Checklist -->
