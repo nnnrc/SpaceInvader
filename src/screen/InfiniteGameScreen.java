@@ -29,6 +29,7 @@ import entity.Bullet;
 import entity.BulletPool;
 import entity.Entity;
 import entity.Ship;
+import entity.ShipType;
 import entity.ZigzagEnemyShip;
 import engine.DifficultyAdjustWhilePlaying;
 
@@ -55,6 +56,7 @@ public class InfiniteGameScreen extends Screen {
 		return (int) DifficultyAdjustWhilePlaying.getInstance().adjustEnemyBulletSpeed(ENEMY_BULLET_SPEED);
 	}
 
+	private final ShipType shipType;
 	private Ship ship;
 	private List<ZigzagEnemyShip> enemies;
 	private Set<Bullet> bullets;
@@ -87,7 +89,14 @@ public class InfiniteGameScreen extends Screen {
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps, final RunSession runSession) {
+		this(gameState, width, height, fps, runSession, ShipType.STANDARD);
+	}
+
+	public InfiniteGameScreen(final GameState gameState, final int width,
+			final int height, final int fps, final RunSession runSession,
+			final ShipType shipType) {
 		super(width, height, fps);
+		this.shipType = shipType;
 		this.runSession = runSession;
 		this.recordsService = Core.getRecordsService();
 		this.recordsEvents.subscribe(EnemyDefeatedEvent.class,
@@ -108,7 +117,7 @@ public class InfiniteGameScreen extends Screen {
 	public final void initialize() {
 		super.initialize();
 
-		this.ship = new Ship(this.width / 2, this.height - 30);
+		this.ship = new Ship(this.width / 2, this.height - 30, this.shipType);
 		this.enemies = new ArrayList<ZigzagEnemyShip>();
 		this.bullets = new HashSet<Bullet>();
 		this.enemyBullets = new HashSet<Bullet>();
