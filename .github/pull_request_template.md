@@ -21,8 +21,8 @@ SCRUM-
 - [ ] Ready for a Level 2 review by any teammate (not the author, TL, or Collaborator)
 
 ### Level 2 – Peer reviewer
-- [ ] Reviewed with **Comment** or **Request changes** (do **not** Approve)
-- [ ] Posted `Level 2: OK`
+- [ ] Approved (or requested changes if something must be fixed)
+- [ ] Ended the approval with `Level 2: OK`
 
 ### Level 3 – TL or Collaborator
 - [ ] Approved and merged with "Create a merge commit" (not squash), branch deleted
