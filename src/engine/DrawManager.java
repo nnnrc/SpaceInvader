@@ -677,9 +677,24 @@ public final class DrawManager {
         backBufferGraphics.fillRect(barX, barY, (int) (barWidth * progress), 6);
     }
 
+    /** Baseline of the grenade counter, on the left under the HUD line. */
+    private static final int GRENADE_COUNT_Y = 55;
+    /** Width of the boss health bar. */
+    private static final int BOSS_BAR_WIDTH = 200;
+    /** Height of the boss health bar. */
+    private static final int BOSS_BAR_HEIGHT = 6;
     /**
-     * Draws the boss health bar at the top of the play area, under the HUD
-     * line. The red part gets shorter as the boss loses health.
+     * Top of the boss health bar. It sits just under the grenade counter so
+     * the two never share a row, and above the laser hint and the boss sprite
+     * (both at y 78).
+     */
+    private static final int BOSS_BAR_Y = GRENADE_COUNT_Y + 4;
+    /** Space between the "BOSS" label and the bar. */
+    private static final int BOSS_LABEL_GAP = 8;
+
+    /**
+     * Draws the boss health bar at the top of the play area, under the
+     * grenade counter. The red part gets shorter as the boss loses health.
      *
      * @param screen
      *                    Screen to draw on.
@@ -688,26 +703,26 @@ public final class DrawManager {
      */
     public void drawBossHealthBar(final Screen screen,
             final double healthRatio) {
-        int barWidth = 200;
-        int barHeight = 6;
-        int barX = screen.getWidth() / 2 - barWidth / 2;
-        int barY = 52;
+        int barX = screen.getWidth() / 2 - BOSS_BAR_WIDTH / 2;
 
-        // "BOSS" label on the left of the bar.
+        // "BOSS" label on the left of the bar. The capital letters are about
+        // 12 px tall, so this baseline centres them on the bar.
         String label = "BOSS";
         backBufferGraphics.setFont(fontRegular);
         backBufferGraphics.setColor(Color.WHITE);
         backBufferGraphics.drawString(label,
-                barX - fontRegularMetrics.stringWidth(label) - 8,
-                barY + barHeight);
+                barX - fontRegularMetrics.stringWidth(label) - BOSS_LABEL_GAP,
+                BOSS_BAR_Y + BOSS_BAR_HEIGHT / 2 + 6);
 
         // Empty bar first, then the health that is left on top of it.
         backBufferGraphics.setColor(Color.DARK_GRAY);
-        backBufferGraphics.fillRect(barX, barY, barWidth, barHeight);
+        backBufferGraphics.fillRect(barX, BOSS_BAR_Y, BOSS_BAR_WIDTH,
+                BOSS_BAR_HEIGHT);
 
         backBufferGraphics.setColor(Color.RED);
-        backBufferGraphics.fillRect(barX, barY,
-                (int) Math.round(barWidth * healthRatio), barHeight);
+        backBufferGraphics.fillRect(barX, BOSS_BAR_Y,
+                (int) Math.round(BOSS_BAR_WIDTH * healthRatio),
+                BOSS_BAR_HEIGHT);
     }
 
     /**
@@ -1519,7 +1534,8 @@ public final class DrawManager {
         }
         backBufferGraphics.setFont(fontRegular);
         backBufferGraphics.setColor(Color.ORANGE);
-        backBufferGraphics.drawString("GRENADE [G] x" + grenades, 10, 55);
+        backBufferGraphics.drawString("GRENADE [G] x" + grenades, 10,
+                GRENADE_COUNT_Y);
     }
 
     /**
