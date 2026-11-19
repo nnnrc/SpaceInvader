@@ -8,6 +8,7 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -133,6 +134,10 @@ public final class DrawManager {
     /** Big sized font properties. */
     private static FontMetrics fontBigMetrics;
 
+    /** Color of the key caps on the How to Play screen. */
+    private static final Color KEY_CAP_COLOR = new Color(255, 220, 70);
+    /** Space between two key caps on the same row. */
+    private static final int KEY_CAP_GAP = 6;
     /** Options of the settings menu, in order. */
     private static final String[] SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Gameplay", "Back" };
     /** Options of the gameplay settings menu, in order. */
@@ -833,6 +838,153 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, modeLabel, screen.getHeight()
                 / height + fontRegularMetrics.getHeight() * 8);
+    }
+
+    /**
+     * Draws the How to Play screen: a title, the current page and how to
+     * move between pages.
+     *
+     * @param screen
+     *               Screen to draw on.
+     * @param page
+     *               Page to draw: 0 for the controls, 1 for the items.
+     * @param pageCount
+     *               Number of pages.
+     * @param items
+     *               One example of each item, in the order they are
+     *               described.
+     */
+    public void drawHowToPlay(final Screen screen, final int page,
+            final int pageCount, final List<Entity> items) {
+        backBufferGraphics.setColor(GameColors.HIGHLIGHT);
+        drawCenteredBigString(screen, "How to Play", screen.getHeight() / 8);
+        backBufferGraphics.setColor(GameColors.TEXT_DIM);
+        drawCenteredRegularString(screen, page == 0 ? "Controls" : "Items",
+                screen.getHeight() / 5);
+
+        if (page == 0)
+            drawHowToPlayControls(screen);
+        else
+            drawHowToPlayItems(screen, items);
+
+        backBufferGraphics.setColor(GameColors.TEXT_DIM);
+        drawCenteredRegularString(screen, "< " + (page + 1) + " / "
+                + pageCount + " >    Esc: back",
+                screen.getHeight() - fontRegularMetrics.getHeight());
+    }
+
+    /**
+     * Draws each control as key caps with the action next to them. The move
+     * and fire keys are the ones set in Controls settings.
+     *
+     * @param screen
+     *               Screen to draw on.
+     */
+    private void drawHowToPlayControls(final Screen screen) {
+        String left = KeyEvent.getKeyText(
+                ControlsConfig.getKey(ControlsConfig.LEFT));
+        String right = KeyEvent.getKeyText(
+                ControlsConfig.getKey(ControlsConfig.RIGHT));
+        String fire = KeyEvent.getKeyText(
+                ControlsConfig.getKey(ControlsConfig.FIRE));
+        String[][] keys = { { left, right }, { fire }, { "G" },
+                { "Space" }, { "I" } };
+        String[] actions = { "Move", "Fire", "Throw grenade",
+                "Hold to charge laser", "Endless mode (title)" };
+
+        int keysRight = screen.getWidth() / 2 - 10;
+        int actionX = screen.getWidth() / 2 + 10;
+        int spacing = fontRegularMetrics.getHeight() * 2 + 4;
+        int y = screen.getHeight() / 4 + fontRegularMetrics.getHeight() * 2;
+
+        backBufferGraphics.setFont(fontRegular);
+        for (int i = 0; i < actions.length; i++) {
+            int rowWidth = -KEY_CAP_GAP;
+            for (String key : keys[i])
+                rowWidth += keyCapWidth(key) + KEY_CAP_GAP;
+            int x = keysRight - rowWidth;
+            for (String key : keys[i]) {
+                drawKeyCap(x, y, key);
+                x += keyCapWidth(key) + KEY_CAP_GAP;
+            }
+            backBufferGraphics.setColor(GameColors.TEXT);
+            backBufferGraphics.drawString(actions[i], actionX, y);
+            y += spacing;
+        }
+    }
+
+    /**
+     * Draws each item with the sprite used in the game, its name and what it
+     * does.
+     *
+     * @param screen
+     *               Screen to draw on.
+     * @param items
+     *               One example of each item, in the order they are
+     *               described.
+     */
+    private void drawHowToPlayItems(final Screen screen,
+            final List<Entity> items) {
+        String[] names = { "Energy Shield", "Twin Cannon", "Hyperfire",
+                "Chameleon Hull", "Cluster Grenade", "Orbital Annihilator" };
+        String[] descriptions = { "Blocks bullets (Heavy Tank)", "Fires two shots",
+                "Shoots faster", "Move freely, no shots", "Press G to throw",
+                "Hold Space for a beam" };
+
+        int iconCenterX = 60;
+        int textX = 110;
+        int rowHeight = fontRegularMetrics.getHeight() * 2 + 12;
+        int y = screen.getHeight() / 4 + fontRegularMetrics.getHeight();
+
+        for (int i = 0; i < names.length && i < items.size(); i++) {
+            Entity item = items.get(i);
+            int iconX = iconCenterX - item.getWidth() / 2;
+            int iconY = y + (rowHeight - 12 - item.getHeight()) / 2;
+            if (item instanceof ClusterGrenadeItem)
+                drawGrenadeItem(iconX, iconY);
+            else
+                drawEntity(item, iconX, iconY);
+
+            backBufferGraphics.setFont(fontRegular);
+            int nameY = y + fontRegularMetrics.getAscent();
+            backBufferGraphics.setColor(GameColors.HIGHLIGHT);
+            backBufferGraphics.drawString(names[i], textX, nameY);
+            backBufferGraphics.setColor(GameColors.TEXT_DIM);
+            backBufferGraphics.drawString(descriptions[i], textX,
+                    nameY + fontRegularMetrics.getHeight() + 2);
+            y += rowHeight;
+        }
+    }
+
+    /**
+     * Returns the width of a key cap drawn for the given key name.
+     *
+     * @param label
+     *              Key name.
+     * @return Width in pixels.
+     */
+    private int keyCapWidth(final String label) {
+        return fontRegularMetrics.stringWidth(label) + 10;
+    }
+
+    /**
+     * Draws a key name inside a rounded box, like a key on a keyboard.
+     *
+     * @param x
+     *              Left side of the key cap.
+     * @param baseline
+     *              Baseline of the key name.
+     * @param label
+     *              Key name.
+     */
+    private void drawKeyCap(final int x, final int baseline,
+            final String label) {
+        int top = baseline - fontRegularMetrics.getAscent() - 4;
+        int height = fontRegularMetrics.getAscent() + 8;
+        backBufferGraphics.setColor(KEY_CAP_COLOR);
+        backBufferGraphics.drawRoundRect(x, top, keyCapWidth(label), height,
+                6, 6);
+        backBufferGraphics.drawString(label, x + 5, baseline);
     }
 
     /**
@@ -1727,13 +1879,13 @@ public final class DrawManager {
 
     public void drawMenu(final Screen screen, final int option) {
         String[] labels = {
-            "Play", "Shop", "Hangar", "High scores",
-            "Records & Achievements", "Settings", "Exit"
+                "Play", "Shop", "Hangar", "High scores",
+                "Records & Achievements", "How to Play", "Settings", "Exit"
         };
-        int[] codes = { 2, 10, 11, 3, 9, 4, 0 };
+        int[] codes = { 2, 10, 11, 3, 9, 15, 4, 0 };
         Icon[] icons = {
                 Icon.PLAY, Icon.SHOP, Icon.HANGAR, Icon.HIGH_SCORES,
-                Icon.RECORDS, Icon.SETTINGS, Icon.EXIT
+                Icon.RECORDS, Icon.HOW_TO_PLAY, Icon.SETTINGS, Icon.EXIT
         };
         int spacing = fontRegularMetrics.getHeight() * 3 / 2;
         int firstY = screen.getHeight() / 2 + fontRegularMetrics.getHeight() * 2;
@@ -1754,9 +1906,9 @@ public final class DrawManager {
 
         String[] labels = {
                 "Play", "Shop", "Hangar", "High scores",
-                "Records & Achievements", "Settings", "Exit"
+                "Records & Achievements", "How to Play", "Settings", "Exit"
         };
-        int[] codes = { 2, 10, 11, 3, 9, 4, 0 };
+        int[] codes = { 2, 10, 11, 3, 9, 15, 4, 0 };
         int fontHeight = fontRegularMetrics.getHeight();
         int spacing = fontHeight * 3 / 2;
         int firstY = screen.getHeight() / 2 + fontHeight * 2;
