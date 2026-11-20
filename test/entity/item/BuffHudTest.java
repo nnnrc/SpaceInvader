@@ -54,4 +54,10 @@ class BuffHudTest {
 
         assertEquals(1, BuffHud.visible(List.of(slow), HIDDEN_PHASE).size());
     }
+
+    @Test
+    void effectWithNoTimeLeftIsHidden() {
+        assertTrue(BuffHud.visible(List.of(buff("Hyperfire", 0)), SHOWN_PHASE)
+                .isEmpty());
+    }
 }

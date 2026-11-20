@@ -32,7 +32,8 @@ public final class BuffHud {
     }
 
     /**
-     * Sorts effects by time left and drops those in the hidden half of their blink.
+     * Sorts effects by time left and drops those that have run out
+     * or are in the hidden half of their blink.
      */
     public static List<BuffStatus> visible(final List<BuffStatus> statuses,
                                            final long now) {
@@ -41,7 +42,7 @@ public final class BuffHud {
 
         List<BuffStatus> shown = new ArrayList<>();
         for (BuffStatus status : sorted) {
-            if (!isBlinkedOut(status, now))
+            if (status.remainingMillis() > 0 && !isBlinkedOut(status, now))
                 shown.add(status);
         }
         return shown;
