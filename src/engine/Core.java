@@ -29,6 +29,7 @@ import audio.AudioControls;
 import screen.AudioControlScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
+import screen.HowToPlayScreen;
 import screen.InfiniteGameScreen;
 import screen.ScoreScreen;
 import screen.Screen;
@@ -181,6 +182,7 @@ public final class Core {
 					RunSession runSession = new RunSession(UUID.randomUUID().toString());
 					campaignRewards.startRun(runSession.getRunId());
 					recordsService.startRun(runSession.getRunId());
+					boolean quitRun = false;
 					do {
 						// One extra live every few levels.
 						boolean bonusLife = gameState.getLevel()
@@ -198,6 +200,12 @@ public final class Core {
 								screen -> frame.setScreen(screen));
 						LOGGER.info("Closing game screen.");
 						resolveRewards(false);
+
+						if (((GameScreen) currentScreen).isQuit()) {
+							LOGGER.info("Campaign quit from the pause menu.");
+							quitRun = true;
+							break;
+						}
 
 						boolean stageCleared = ((GameScreen) currentScreen).isStageCleared();
 						gameState = ((GameScreen) currentScreen).getGameState();
@@ -221,6 +229,11 @@ public final class Core {
 
 					} while (gameState.getLivesRemaining() > 0
 							&& gameState.getLevel() <= CampaignStageData.getTotalStages());
+
+					if (quitRun) {
+						returnCode = 1;
+						break;
+					}
 
 					RunRecord completedRun = runSession.finish(gameState.getScore(),
 							gameState.getShipsDestroyed(), System.currentTimeMillis());
@@ -246,6 +259,13 @@ public final class Core {
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing high score screen.");
 					break;
+                case 15:
+                    // How to Play.
+                    currentScreen = new HowToPlayScreen(width, height, FPS);
+                    LOGGER.info("Starting how to play screen.");
+                    returnCode = frame.setScreen(currentScreen);
+                    LOGGER.info("Closing how to play screen.");
+                    break;
 				case 9:
 					currentScreen = new PlayerRecordsScreen(width, height, FPS, recordsService);
 					returnCode = frame.setScreen(currentScreen);
@@ -302,7 +322,7 @@ public final class Core {
 					RunSession infiniteSession = new RunSession(UUID.randomUUID().toString());
 					recordsService.startRun(infiniteSession.getRunId());
 					currentScreen = new InfiniteGameScreen(gameState, width, height,
-							FPS, infiniteSession);
+							FPS, infiniteSession, selectedShip);
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
 							+ " infinite game screen at " + FPS + " fps.");
 					runEndless((InfiniteGameScreen) currentScreen, endlessRewards,

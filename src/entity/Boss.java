@@ -73,6 +73,15 @@ public class Boss extends Entity {
         }
     }
 
+    /** Normal color of the boss. */
+    private static final Color NORMAL_COLOR = Color.MAGENTA;
+    /** Color the boss flashes when it is hit. */
+    private static final Color HIT_COLOR = Color.WHITE;
+    /** Number of frames the hit effect lasts (about 0.1s at 60 FPS). */
+    private static final int HIT_EFFECT_FRAMES = 6;
+    /** Distance in pixels the boss sprite shakes sideways when hit. */
+    private static final int HIT_SHAKE_DISTANCE = 2;
+
     /** Extra speed added in phase 2. */
     private static final int PHASE_2_SPEED_BONUS = 1;
     /** Extra speed added in phase 3. */
@@ -92,6 +101,8 @@ public class Boss extends Entity {
     private State state;
     /** Current phase: 1, 2 or 3. */
     private int phase;
+    /** Frames left in the hit effect, 0 when the boss is not flashing. */
+    private int hitEffectFrames;
 
     /**
      * Constructor, creates the boss and resets its health and state.
@@ -105,7 +116,7 @@ public class Boss extends Entity {
      */
     public Boss(final int positionX, final int positionY, final BossType type) {
         // Temporarily reuses the bonus ship sprite (16 x 7 cells, 2px each).
-        super(positionX, positionY, WIDTH, HEIGHT, Color.MAGENTA);
+        super(positionX, positionY, WIDTH, HEIGHT, NORMAL_COLOR);
         this.spriteType = SpriteType.EnemyShipSpecial;
 
         this.type = type;
@@ -133,6 +144,8 @@ public class Boss extends Entity {
         // A hit only lasts one frame, then the boss keeps moving.
         if (this.state == State.HIT)
             this.state = State.MOVING;
+
+        updateHitEffect();
 
         this.positionX += this.speed * this.direction;
 
@@ -167,10 +180,33 @@ public class Boss extends Entity {
         this.state = State.HIT;
 
         // A defeated boss does not change phase.
-        if (this.currentHealth > 0)
+        if (this.currentHealth > 0) {
             updatePhase();
-        else
+            startHitEffect();
+        } else {
             defeat();
+        }
+    }
+
+    /**
+     * Starts the hit effect: the boss turns white and shakes for a few
+     * frames. A new hit restarts the effect.
+     */
+    private void startHitEffect() {
+        this.hitEffectFrames = HIT_EFFECT_FRAMES;
+        setColor(HIT_COLOR);
+    }
+
+    /**
+     * Counts down the hit effect and gives the boss its normal color back
+     * when the effect is over. Called once per frame from update().
+     */
+    private void updateHitEffect() {
+        if (this.hitEffectFrames == 0)
+            return;
+        this.hitEffectFrames--;
+        if (this.hitEffectFrames == 0)
+            setColor(NORMAL_COLOR);
     }
 
     /**
@@ -196,6 +232,9 @@ public class Boss extends Entity {
     private void defeat() {
         this.state = State.DEFEATED;
         this.spriteType = SpriteType.Explosion;
+        // The explosion is drawn without the hit effect.
+        this.hitEffectFrames = 0;
+        setColor(NORMAL_COLOR);
     }
 
     public final BossType getType() {
@@ -231,6 +270,25 @@ public class Boss extends Entity {
     /** @return Current phase: 1, 2 or 3. */
     public final int getPhase() {
         return this.phase;
+    }
+
+    /** @return True while the boss is flashing after a hit. */
+    public final boolean isHitEffectActive() {
+        return this.hitEffectFrames > 0;
+    }
+
+    /**
+     * Returns how far to move the boss sprite sideways while it shakes.
+     * Only the drawing moves: the position and the hitbox stay the same.
+     *
+     * @return Offset in pixels, 0 when no hit effect is active.
+     */
+    public final int getHitShakeOffset() {
+        if (this.hitEffectFrames == 0)
+            return 0;
+        // Moves right and left on every other frame.
+        return this.hitEffectFrames % 2 == 0 ? HIT_SHAKE_DISTANCE
+                : -HIT_SHAKE_DISTANCE;
     }
 
     /** @return True when the boss has been defeated. */

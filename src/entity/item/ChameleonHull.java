@@ -3,6 +3,7 @@ package entity.item;
 import java.awt.Color;
 import engine.DrawManager.SpriteType;
 import entity.Ship;
+import audio.AudioManager;
 
 /** Collectible Chameleon Hull power-up. @author Brieuc Viougeat */
 public final class ChameleonHull extends Item {
@@ -61,6 +62,7 @@ public final class ChameleonHull extends Item {
     @Override
     public void applyEffect(final Ship ship) {
         ship.activateChameleonHull();
+        AudioManager.playSFX("audio/sfx/item_chameleon.wav");
     }
 
     @Override
