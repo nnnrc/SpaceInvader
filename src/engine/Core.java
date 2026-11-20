@@ -545,6 +545,18 @@ public final class Core {
 	}
 
 	/**
+	 * Controls access to the application window, so screens can layer
+	 * their own Swing components (e.g. a visible name-input field) on
+	 * top of the game's own drawing via
+	 * {@link Frame#addOverlayComponent(javax.swing.JComponent)}.
+	 *
+	 * @return Application frame.
+	 */
+	public static Frame getFrame() {
+		return frame;
+	}
+
+	/**
 	 * Controls access to the file manager.
 	 *
 	 * @return Application file manager.

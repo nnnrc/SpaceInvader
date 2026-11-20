@@ -17,7 +17,9 @@ public class Score implements Comparable<Score> {
 	 * Constructor.
 	 *
 	 * @param name
-	 *            Player name, three letters.
+	 *            Player name, up to 10 characters (Hangul, English
+	 *            letters or digits; validated by the caller, e.g.
+	 *            screen.NameInputFilter).
 	 * @param score
 	 *            Player score.
 	 */
