@@ -935,9 +935,11 @@ public class GameScreen extends Screen {
 
 		// Item HUD: grenades left, active buffs and their time left.
 		drawManager.drawGrenadeCount(this, this.ship.getGrenadeCount());
-		drawManager.drawBuffs(this, BuffHud.buildLines(
-				this.itemManager.getBuffManager().getActiveBuffsRemainingTime(),
-				System.currentTimeMillis()));
+		long buffHudTime = System.currentTimeMillis();
+		drawManager.drawBuffs(this, BuffHud.visible(
+				BuffHud.collect(this.itemManager.getBuffManager(),
+						this.playerStatus, buffHudTime),
+				buffHudTime));
 
 		// The Orbital Annihilator is shown only once it has been caught.
 		if (this.annihilator.isReady())
