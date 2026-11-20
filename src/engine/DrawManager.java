@@ -1490,8 +1490,8 @@ public final class DrawManager {
         backBufferGraphics.drawString("GRENADE [G] x" + grenades, 10, 55);
     }
 
-    /** Below the boss health bar (y 52-58) and the laser hint (y 78). */
-    private static final int BUFF_HUD_TOP = 96;
+    /** Below the boss health bar, the laser hint and the achievement notice (y 60-100). */
+    private static final int BUFF_HUD_TOP = 120;
     private static final int BUFF_LINE_HEIGHT = 26;
     private static final int BUFF_GAUGE_WIDTH = 80;
     private static final int BUFF_GAUGE_HEIGHT = 4;
