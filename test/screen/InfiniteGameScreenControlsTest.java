@@ -77,16 +77,28 @@ public final class InfiniteGameScreenControlsTest {
                 && destroyed.getGameState().getBulletsShot() == 0,
                 "Destroyed ship accepted controls");
 
+        InfiniteGameScreen pausing = screen();
+        pausing.inputDelay = Core.getCooldown(0);
+        pausing.isRunning = true;
+        tap(pausing, KeyEvent.VK_ESCAPE);
+        check(pausing.isRunning && pausing.isPaused(),
+                "Escape opens the pause menu instead of ending the run");
+        tap(pausing, KeyEvent.VK_ESCAPE);
+        check(pausing.isRunning && !pausing.isPaused(),
+                "Escape in the pause menu resumes the run");
+
         InfiniteGameScreen quitting = screen();
         quitting.inputDelay = Core.getCooldown(0);
         quitting.isRunning = true;
-        key(quitting, KeyEvent.VK_ESCAPE, true);
-        try {
-            quitting.update();
-        } finally {
-            key(quitting, KeyEvent.VK_ESCAPE, false);
-        }
-        check(!quitting.isRunning, "Escape no longer exits the run");
+        tap(quitting, KeyEvent.VK_ESCAPE);
+        tap(quitting, KeyEvent.VK_DOWN);
+        tap(quitting, KeyEvent.VK_SPACE);
+        check(quitting.isRunning && quitting.isPaused(),
+                "Quitting asks for confirmation first");
+        tap(quitting, KeyEvent.VK_DOWN);
+        tap(quitting, KeyEvent.VK_SPACE);
+        check(!quitting.isRunning && quitting.isAbandoned(),
+                "Confirmed quit abandons the run");
         System.out.println("Infinite Mode controls checks passed.");
     }
 
@@ -110,6 +122,17 @@ public final class InfiniteGameScreenControlsTest {
         } finally {
             key(screen, code, false);
         }
+    }
+
+    private static void tap(final InfiniteGameScreen screen, final int code) {
+        key(screen, code, true);
+        try {
+            screen.update();
+        } finally {
+            key(screen, code, false);
+        }
+        if (screen.isRunning)
+            screen.update();
     }
 
     private static void key(final InfiniteGameScreen screen, final int code,

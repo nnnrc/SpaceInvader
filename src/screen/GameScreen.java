@@ -221,6 +221,10 @@ public class GameScreen extends Screen {
     private int lastCountdown = -1;
 	private RunSession runSession;
     private RecordsService recordsService;
+    /** Pause menu opened with Esc during the stage. */
+    private final PauseMenu pauseMenu = new PauseMenu();
+    /** Whether the player quit the run from the pause menu. */
+    private boolean quit;
     private Achievement visibleAchievement;
     private long achievementNoticeUntil;
     private final GameplayEventPublisher recordsEvents = new GameplayEventPublisher();
@@ -594,6 +598,8 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
+		if (handlePauseMenu())
+			return;
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
@@ -962,6 +968,8 @@ public class GameScreen extends Screen {
 
         if (this.visibleAchievement != null)
             drawManager.drawAchievementNotice(this, this.visibleAchievement);
+        if (this.pauseMenu.isOpen())
+            drawManager.drawPauseMenu(this, this.pauseMenu);
         drawManager.completeDrawing(this);
     }
 
@@ -1415,6 +1423,49 @@ public class GameScreen extends Screen {
 
     public final boolean isStageCleared() {
         return this.stageCleared;
+    }
+
+    /**
+     * @return Whether the player quit the run from the pause menu.
+     */
+    public final boolean isQuit() {
+        return this.quit;
+    }
+
+    /**
+     * @return Whether the pause menu is open.
+     */
+    public final boolean isPaused() {
+        return this.pauseMenu.isOpen();
+    }
+
+    /**
+     * Opens, uses and closes the pause menu. While it is open, the game does
+     * not move: only the menu reacts to the keys and the screen is redrawn
+     * with the menu on top.
+     *
+     * @return Whether the rest of the update must be skipped.
+     */
+    private boolean handlePauseMenu() {
+        if (!this.inputDelay.checkFinished() || this.levelFinished)
+            return false;
+
+        PauseMenu.Action action = this.pauseMenu.update(inputManager);
+        if (action == PauseMenu.Action.PAUSE && this.runSession != null)
+            this.runSession.stopActiveSegment(System.nanoTime());
+        if (action == PauseMenu.Action.QUIT) {
+            this.quit = true;
+            if (this.recordsService != null && this.runSession != null)
+                this.recordsService.abandonRun(this.runSession.getRunId());
+            this.isRunning = false;
+            return true;
+        }
+
+        if (this.pauseMenu.isOpen()) {
+            draw();
+            return true;
+        }
+        return false;
     }
 
     /**

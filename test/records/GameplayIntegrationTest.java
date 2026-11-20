@@ -46,6 +46,13 @@ public final class GameplayIntegrationTest {
         } finally { global.set(null, previous); service.close(); }
         System.out.println("GameplayIntegrationTest passed: " + checks + " checks.");
     }
+    /** Presses and releases one key, updating the screen while it is still running. */
+    private static void tapKey(InfiniteGameScreen game, int key) throws Exception {
+        keys()[key]=true;
+        try { call(game,"update"); }
+        finally { Arrays.fill(keys(),false); }
+        if ((Boolean)get(game,"isRunning")) call(game,"update");
+    }
     private static boolean[] keys() throws Exception {
         Field f = InputManager.class.getDeclaredField("keys"); f.setAccessible(true);
         return (boolean[])f.get(null);
@@ -87,13 +94,18 @@ public final class GameplayIntegrationTest {
         session.startActiveSegment(System.nanoTime()-60001000000L);
         call(game,"update");
         check(service.getUnlockTime(Achievement.SIXTY_SECONDS)!=null,"infinite active timer unlocks sixty seconds");
-        keys()[java.awt.event.KeyEvent.VK_ESCAPE]=true;
-        try { call(game,"update"); }
-        finally { Arrays.fill(keys(),false); }
+        set(game,"isRunning",true);
+        tapKey(game,java.awt.event.KeyEvent.VK_ESCAPE);
+        long paused=session.getActiveDurationMillis(System.nanoTime());
+        check(game.isPaused(),"Escape opens the pause menu");
+        check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==paused,"Pause stops active timing");
+        for (int key : new int[]{java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_SPACE,
+                java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_SPACE})
+            tapKey(game,key);
         long stopped=session.getActiveDurationMillis(System.nanoTime());
-        check(game.isAbandoned(),"Escape marks infinite run abandoned");
-        check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==stopped,"Escape stops active timing");
-        check(!service.enemyDefeated("timing","late"),"Escape invalidates active achievement events");
+        check(game.isAbandoned(),"Quitting from the pause menu marks infinite run abandoned");
+        check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==stopped,"Quitting stops active timing");
+        check(!service.enemyDefeated("timing","late"),"Quitting invalidates active achievement events");
         service.startRun("death"); RunSession deadSession=new RunSession("death");
         InfiniteGameScreen dead=new InfiniteGameScreen(new GameState(1,100,0,2,1),448,520,60,deadSession);
         dead.initialize(); set(dead,"inputDelay",Core.getCooldown(0)); call(dead,"update");
