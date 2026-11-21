@@ -5,6 +5,7 @@ import java.awt.event.KeyEvent;
 import audio.AudioManager;
 import engine.Core;
 import engine.Cooldown;
+import engine.HangarConfig;
 import entity.Ship;
 
 /** Lets the player customize the ship's color. */
@@ -38,14 +39,10 @@ public class HangarScreen extends Screen {
                 && this.selectionCooldown.checkFinished()) {
             if (this.inputManager.isKeyDown(KeyEvent.VK_LEFT)
                     || this.inputManager.isKeyDown(KeyEvent.VK_A)) {
-                ShipCustomization.changeColor(-1);
-                this.selectionCooldown.reset();
-                AudioManager.playSFX("audio/sfx/menu_move.wav");
+                changeColor(-1);
             } else if (this.inputManager.isKeyDown(KeyEvent.VK_RIGHT)
                     || this.inputManager.isKeyDown(KeyEvent.VK_D)) {
-                ShipCustomization.changeColor(1);
-                this.selectionCooldown.reset();
-                AudioManager.playSFX("audio/sfx/menu_move.wav");
+                changeColor(1);
             } else if (this.inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
                 this.returnCode = 1;
                 this.isRunning = false;
@@ -54,6 +51,14 @@ public class HangarScreen extends Screen {
         }
 
         draw();
+    }
+
+    /** Changes the color and saves it right away, so closing the window keeps it. */
+    private void changeColor(final int direction) {
+        ShipCustomization.changeColor(direction);
+        HangarConfig.saveColorIndex(ShipCustomization.getColorIndex());
+        this.selectionCooldown.reset();
+        AudioManager.playSFX("audio/sfx/menu_move.wav");
     }
 
     private void draw() {

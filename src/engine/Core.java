@@ -35,6 +35,7 @@ import screen.ScoreScreen;
 import screen.Screen;
 import screen.TitleScreen;
 import entity.ShipType;
+import screen.ShipCustomization;
 import screen.ShipSelectionScreen;
 import screen.PlayerRecordsScreen;
 import campaign.CampaignStageData;
@@ -145,7 +146,9 @@ public final class Core {
 			LOGGER.warning(recordsService.getLoadWarning());
 
 		GameState gameState;
-		ShipType selectedShip = ShipType.STANDARD;
+		ShipType selectedShip = HangarConfig.loadShip(shopController::isShipAvailable);
+		ShipCustomization.setColorIndex(
+				HangarConfig.loadColorIndex(ShipCustomization.getColorCount()));
 
 		int returnCode = 1;
 		do {
@@ -289,6 +292,7 @@ public final class Core {
 
 					if (selectionResult == ShipSelectionScreen.SHIP_SELECTED) {
 						selectedShip = shipSelection.getSelectedShip();
+						HangarConfig.saveShip(selectedShip);
 					}
 
 					returnCode = 11;
