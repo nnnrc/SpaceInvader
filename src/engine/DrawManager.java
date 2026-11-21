@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 import screen.PauseMenu;
 import screen.Screen;
 import hud.FloatingScoreHud;
+import hud.EndlessSpeedHud;
 import currency.PermanentUpgrade;
 import currency.PlayerAssetsState;
 import currency.ShopCatalog.Category;
@@ -390,6 +391,12 @@ public final class DrawManager {
         int scoreX = screen.getWidth() - 60;
         drawIcon(Icon.SCORE, scoreX - Icon.SCORE.getWidth() * 2 - 6, 12, 2);
         backBufferGraphics.drawString(scoreString, scoreX, 25);
+    }
+
+    /** Draws the animated speed level and progress bar in the Endless HUD. */
+    public void drawEnemySpeedProgress(final Screen screen, final EndlessSpeedHud hud) {
+        hud.draw((java.awt.Graphics2D) backBufferGraphics,
+                screen.getWidth(), fontRegular);
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */
