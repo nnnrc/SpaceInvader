@@ -223,6 +223,26 @@ public class InfiniteGameScreen extends Screen {
 		}
 	}
 
+	/**
+	 * @return Speed level used by newly spawned enemies, from 1 to 3.
+	 */
+	public final int getEnemySpeedLevel() {
+		return Math.min(MAXIMUM_FALL_SPEED,
+				1 + this.shipsDestroyed / KILLS_PER_SPEED_UP);
+	}
+
+	/**
+	 * @return Progress toward the next speed level, from 0 to 1.
+	 *         The maximum level stays at 1 to display a full bar.
+	 */
+	public final double getEnemySpeedProgress() {
+		if (getEnemySpeedLevel() == MAXIMUM_FALL_SPEED)
+			return 1.0;
+
+		return (double) (this.shipsDestroyed % KILLS_PER_SPEED_UP)
+				/ KILLS_PER_SPEED_UP;
+	}
+
 	private void spawnEnemy() {
 		if (!this.spawnCooldown.checkFinished())
 			return;
@@ -241,8 +261,7 @@ public class InfiniteGameScreen extends Screen {
 		else
 			spriteType = SpriteType.EnemyShipA1;
 
-		int fallSpeed = Math.min(MAXIMUM_FALL_SPEED,
-				1 + this.shipsDestroyed / KILLS_PER_SPEED_UP);
+		int fallSpeed = getEnemySpeedLevel();
 
 		this.enemies.add(new ZigzagEnemyShip(positionX,
 				SEPARATION_LINE_HEIGHT, spriteType, fallSpeed));
