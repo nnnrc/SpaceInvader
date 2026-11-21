@@ -1,6 +1,7 @@
 package screen;
 
 import java.awt.event.KeyEvent;
+import java.util.Objects;
 
 import engine.Cooldown;
 import engine.Core;
@@ -19,12 +20,16 @@ public class ShipSelectionScreen extends Screen {
 
     private final Cooldown selectionCooldown;
     private final ShipType[] shipTypes = ShipType.values();
-    /** Currently selected index. */
-    private int selectedIndex = 0;
+    /** Equipped ship when the screen opened, separate from the highlighted option. */
+    private final ShipType equippedShip;
+    /** Currently highlighted index. */
+    private int selectedIndex;
     /** Tracks the previous left mouse button state. */
     private boolean wasMousePressed = false;
     /** Option hovered in the previous frame, used only to time the hover sound. */
     private int lastHoveredIndex = -1;
+    private int lastMouseX;
+    private int lastMouseY;
 
     /**
      * Constructor, establishes the properties of the screen.
@@ -34,12 +39,21 @@ public class ShipSelectionScreen extends Screen {
      * @param fps    Frames per second.
      */
     public ShipSelectionScreen(final int width, final int height, final int fps) {
+        this(width, height, fps, ShipType.STANDARD);
+    }
+
+    /** Opens with the cursor on the equipped ship; browsing does not equip another ship. */
+    public ShipSelectionScreen(final int width, final int height, final int fps,
+            final ShipType equippedShip) {
         super(width, height, fps);
 
+        this.equippedShip = Objects.requireNonNull(equippedShip, "equippedShip");
+        this.selectedIndex = this.equippedShip.ordinal();
         this.returnCode = RETURN_TO_HANGAR_MENU;
         this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
-        this.selectedIndex = 0;
+        this.lastMouseX = this.inputManager.getMouseX();
+        this.lastMouseY = this.inputManager.getMouseY();
     }
 
     @Override
@@ -52,23 +66,7 @@ public class ShipSelectionScreen extends Screen {
     protected void update() {
         super.update();
 
-        // Get the ship currently hovered by the mouse.
-        int mouseX = inputManager.getMouseX();
-        int mouseY = inputManager.getMouseY();
-
-        int hoveredIndex = drawManager.getShipSelectionOptionAt(
-                this, this.shipTypes, mouseX, mouseY);
-
-        // Update the selected ship when hovering over a valid option.
-        if (hoveredIndex != -1 && hoveredIndex != this.selectedIndex) {
-            this.selectedIndex = hoveredIndex;
-        }
-
-        // Play the move sound only when the mouse enters a different option.
-        if (hoveredIndex != -1 && hoveredIndex != this.lastHoveredIndex) {
-            AudioManager.playSFX("audio/sfx/menu_move.wav");
-        }
-        this.lastHoveredIndex = hoveredIndex;
+        int hoveredIndex = updateMouseHover();
 
         // Detect a new left mouse click.
         boolean mousePressed = inputManager.isMousePressed();
@@ -115,6 +113,25 @@ public class ShipSelectionScreen extends Screen {
         }
     }
 
+    /** A parked mouse must not override the initial cursor or keyboard navigation. */
+    private int updateMouseHover() {
+        int mouseX = this.inputManager.getMouseX();
+        int mouseY = this.inputManager.getMouseY();
+        int hoveredIndex = this.drawManager.getShipSelectionOptionAt(
+                this, this.shipTypes, mouseX, mouseY);
+        if (mouseX == this.lastMouseX && mouseY == this.lastMouseY)
+            return hoveredIndex;
+
+        this.lastMouseX = mouseX;
+        this.lastMouseY = mouseY;
+        if (hoveredIndex != -1)
+            this.selectedIndex = hoveredIndex;
+        if (hoveredIndex != -1 && hoveredIndex != this.lastHoveredIndex)
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
+        this.lastHoveredIndex = hoveredIndex;
+        return hoveredIndex;
+    }
+
     private void confirmSelection() {
         if (!Core.getShopController().isShipAvailable(getSelectedShip())) return;
         this.returnCode = SHIP_SELECTED;
@@ -127,6 +144,10 @@ public class ShipSelectionScreen extends Screen {
         this.drawManager.drawShipSelection(
                 this, this.shipTypes, this.selectedIndex);
         this.drawManager.completeDrawing(this);
+    }
+
+    public final ShipType getEquippedShip() {
+        return this.equippedShip;
     }
 
     public final ShipType getSelectedShip() {
