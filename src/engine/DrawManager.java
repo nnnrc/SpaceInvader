@@ -395,8 +395,7 @@ public final class DrawManager {
 
     /** Draws the animated speed level and progress bar in the Endless HUD. */
     public void drawEnemySpeedProgress(final Screen screen, final EndlessSpeedHud hud) {
-        hud.draw((java.awt.Graphics2D) backBufferGraphics,
-                screen.getWidth(), fontRegular);
+        hud.draw((java.awt.Graphics2D) backBufferGraphics, screen.getWidth());
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */

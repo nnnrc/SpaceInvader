@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
@@ -94,7 +93,7 @@ class EndlessSpeedHudTest {
         BufferedImage image = new BufferedImage(448, 40, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = image.createGraphics();
         try {
-            hud.draw(graphics, image.getWidth(), new Font("Monospaced", Font.PLAIN, 14));
+            hud.draw(graphics, image.getWidth());
         } finally {
             graphics.dispose();
         }
