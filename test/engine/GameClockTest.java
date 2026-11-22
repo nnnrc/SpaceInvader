@@ -104,4 +104,23 @@ class GameClockTest {
 		assertFalse(GameClock.isPaused());
 		assertEquals(this.wallTime, GameClock.now());
 	}
+
+	@Test
+	@DisplayName("Time spent outside the game does not count as game time")
+	void runOutsideGameKeepsTheGameTime() {
+		GameClock.pause();
+		long gameTime = GameClock.now();
+
+		GameClock.runOutsideGame(() -> {
+			assertFalse(GameClock.isPaused());
+			this.wallTime += 3_000;
+			assertEquals(gameTime + 3_000, GameClock.now());
+		});
+
+		assertTrue(GameClock.isPaused());
+		assertEquals(gameTime, GameClock.now());
+		this.wallTime += 1_000;
+		GameClock.resume();
+		assertEquals(gameTime, GameClock.now());
+	}
 }

@@ -99,7 +99,7 @@ public final class GameplayIntegrationTest {
         long paused=session.getActiveDurationMillis(System.nanoTime());
         check(game.isPaused(),"Escape opens the pause menu");
         check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==paused,"Pause stops active timing");
-        for (int key : new int[]{java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_SPACE,
+        for (int key : new int[]{java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_SPACE,
                 java.awt.event.KeyEvent.VK_DOWN,java.awt.event.KeyEvent.VK_SPACE})
             tapKey(game,key);
         long stopped=session.getActiveDurationMillis(System.nanoTime());
