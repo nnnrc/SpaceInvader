@@ -13,6 +13,17 @@ public class ItemManager {
     private final BuffManager buffManager;
     private final int screenHeight;
 
+    @FunctionalInterface
+    public interface ItemPickupListener {
+        void onItemPickedUp(Item item);
+    }
+
+    private ItemPickupListener pickupListener;
+
+    public void setPickupListener(final ItemPickupListener listener) {
+        this.pickupListener = listener;
+    }
+
     public ItemManager(final int screenHeight) {
         this.activeItems = new ArrayList<>();
         this.buffManager = new BuffManager();
@@ -47,6 +58,9 @@ public class ItemManager {
                     AudioManager.playSFX("audio/sfx/item_pickup.wav");
                 }
                 this.buffManager.addBuff(item, ship);
+                if (this.pickupListener != null) {
+                    this.pickupListener.onItemPickedUp(item);
+                }
                 iterator.remove();
             }
         }
