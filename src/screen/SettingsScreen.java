@@ -13,21 +13,51 @@ public class SettingsScreen extends Screen {
     private static final int CONTROLS_OPTION = 1;
     private static final int GAMEPLAY_OPTION = 2;
     private static final int BACK_OPTION = 3;
-    private static final int OPTION_COUNT = 4;
+    /** Options shown from the main menu, in order. */
+    private static final int[] MENU_OPTIONS = { AUDIO_OPTION, CONTROLS_OPTION,
+            GAMEPLAY_OPTION, BACK_OPTION };
+    /** Options shown during a game, in order: Gameplay is left out. */
+    private static final int[] IN_GAME_OPTIONS = { AUDIO_OPTION,
+            CONTROLS_OPTION, BACK_OPTION };
 
     private Cooldown selectionCooldown;
+    /** Position of the selected option in the list shown. */
     private int selectedOption;
     /** Option under the mouse on the last frame, -1 if none. */
     private int lastHoveredOption = -1;
     /** Starts true so a click held from the previous screen is ignored. */
     private boolean wasMousePressed = true;
+    /** Whether the menu was opened during a game, from the pause menu. */
+    private final boolean inGame;
+    /** Options shown, in order. */
+    private final int[] options;
 
     public SettingsScreen(final int width, final int height, final int fps) {
+        this(width, height, fps, false);
+    }
+
+    /**
+     * Creates the settings menu.
+     *
+     * @param width
+     *            Screen width.
+     * @param height
+     *            Screen height.
+     * @param fps
+     *            Frames per second.
+     * @param inGame
+     *            True when opened during a game: Gameplay is not shown, so
+     *            the difficulty of the run does not change.
+     */
+    public SettingsScreen(final int width, final int height, final int fps,
+            final boolean inGame) {
         super(width, height, fps);
+        this.inGame = inGame;
+        this.options = inGame ? IN_GAME_OPTIONS : MENU_OPTIONS;
         this.returnCode = 1; // Retour au menu principal
         this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
-        this.selectedOption = AUDIO_OPTION;
+        this.selectedOption = 0;
     }
 
     @Override
@@ -42,6 +72,7 @@ public class SettingsScreen extends Screen {
         draw();
 
         int hoveredOption = drawManager.getSettingsMenuOptionAt(this,
+                this.inGame,
                 inputManager.getMouseX(), inputManager.getMouseY());
 
         // Select an option when the mouse moves onto it.
@@ -71,13 +102,14 @@ public class SettingsScreen extends Screen {
 
         if (inputManager.isKeyDown(KeyEvent.VK_UP) || inputManager.isKeyDown(KeyEvent.VK_W)) {
             this.selectedOption =
-                    (this.selectedOption - 1 + OPTION_COUNT) % OPTION_COUNT;
+                    (this.selectedOption - 1 + this.options.length)
+                            % this.options.length;
             this.selectionCooldown.reset();
             AudioManager.playSFX("audio/sfx/menu_move.wav");
         } else if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
                 || inputManager.isKeyDown(KeyEvent.VK_S)) {
             this.selectedOption =
-                    (this.selectedOption + 1) % OPTION_COUNT;
+                    (this.selectedOption + 1) % this.options.length;
             this.selectionCooldown.reset();
             AudioManager.playSFX("audio/sfx/menu_move.wav");
         } else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
@@ -93,7 +125,8 @@ public class SettingsScreen extends Screen {
      * Opens the screen of the selected option.
      */
     private void confirmSelectedOption() {
-        switch (this.selectedOption) {
+        int option = this.options[this.selectedOption];
+        switch (option) {
         case AUDIO_OPTION:
             this.returnCode = 5;
             break;
@@ -108,7 +141,7 @@ public class SettingsScreen extends Screen {
             this.returnCode = 1;
             break;
         }
-        if(this.selectedOption == BACK_OPTION){
+        if(option == BACK_OPTION){
             AudioManager.playSFX("audio/sfx/menu_back.wav");
         }
         else {
@@ -119,7 +152,7 @@ public class SettingsScreen extends Screen {
 
     private void draw() {
         drawManager.initDrawing(this);
-        drawManager.drawSettingsMenu(this, this.selectedOption);
+        drawManager.drawSettingsMenu(this, this.selectedOption, this.inGame);
         drawManager.completeDrawing(this);
     }
 }

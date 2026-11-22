@@ -54,6 +54,28 @@ public final class GameClock {
 		return pausedAt >= 0;
 	}
 
+	/**
+	 * Runs a task, such as the settings opened from the pause menu, with the
+	 * clock moving, so the cooldowns of its menus work. When the task ends,
+	 * the clock is stopped again at the game time it showed before, so the
+	 * time spent in the task does not count as game time.
+	 *
+	 * @param task
+	 *            Task to run while the game is paused.
+	 */
+	public static void runOutsideGame(final Runnable task) {
+		long gameTime = now();
+		resume();
+		try {
+			task.run();
+		} finally {
+			synchronized (GameClock.class) {
+				pausedAt = source.getAsLong();
+				pausedTotal = pausedAt - gameTime;
+			}
+		}
+	}
+
 	/** Starts the game time again and forgets earlier pauses. */
 	public static synchronized void reset() {
 		pausedAt = -1;

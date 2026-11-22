@@ -141,6 +141,8 @@ public final class DrawManager {
     private static final int KEY_CAP_GAP = 6;
     /** Options of the settings menu, in order. */
     private static final String[] SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Gameplay", "Back" };
+    /** Options of the settings menu opened during a game, without Gameplay. */
+    private static final String[] IN_GAME_SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Back" };
     /** Options of the gameplay settings menu, in order. */
     private static final String[] GAMEPLAY_SETTINGS_OPTIONS = { "Easy", "Normal", "Hard" };
     /** Width of the column holding the audio settings. */
@@ -1385,9 +1387,22 @@ public final class DrawManager {
         backBufferGraphics.drawString(label, x, y);
     }
 
-    public void drawSettingsMenu(final Screen screen, final int selectedOption) {
-        String[] options = SETTINGS_MENU_OPTIONS;
-        Icon[] icons = { Icon.AUDIO, Icon.CONTROLS, Icon.GAMEPLAY, Icon.BACK };
+    /**
+     * Draws the settings menu.
+     *
+     * @param screen
+     *            Screen to draw on.
+     * @param selectedOption
+     *            Index of the selected option.
+     * @param inGame
+     *            True when opened during a game: Gameplay is not shown.
+     */
+    public void drawSettingsMenu(final Screen screen, final int selectedOption,
+            final boolean inGame) {
+        String[] options = getSettingsMenuOptions(inGame);
+        Icon[] icons = inGame
+                ? new Icon[] { Icon.AUDIO, Icon.CONTROLS, Icon.BACK }
+                : new Icon[] { Icon.AUDIO, Icon.CONTROLS, Icon.GAMEPLAY, Icon.BACK };
 
         backBufferGraphics.setColor(Color.GREEN);
         drawCenteredBigString(screen, "Settings", screen.getHeight() / 5);
@@ -2014,16 +2029,29 @@ public final class DrawManager {
     /**
      * Returns the settings menu option under the mouse.
      *
+     * @param inGame
+     *            True when opened during a game: Gameplay is not shown.
      * @return Index of the hovered option, or -1 if none.
      */
     public int getSettingsMenuOptionAt(final Screen screen,
-            final int mouseX, final int mouseY) {
+            final boolean inGame, final int mouseX, final int mouseY) {
         if (fontRegularMetrics == null)
             return -1;
 
-        return getCenteredOptionAt(screen, SETTINGS_MENU_OPTIONS,
+        return getCenteredOptionAt(screen, getSettingsMenuOptions(inGame),
                 screen.getHeight() / 2, fontRegularMetrics.getHeight() * 2,
                 mouseX, mouseY);
+    }
+
+    /**
+     * Returns the labels of the settings menu.
+     *
+     * @param inGame
+     *            True when opened during a game.
+     * @return One label per option shown, in order.
+     */
+    private static String[] getSettingsMenuOptions(final boolean inGame) {
+        return inGame ? IN_GAME_SETTINGS_MENU_OPTIONS : SETTINGS_MENU_OPTIONS;
     }
 
     /**

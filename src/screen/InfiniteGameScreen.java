@@ -475,6 +475,8 @@ public class InfiniteGameScreen extends Screen {
 		PauseMenu.Action action = this.pauseMenu.update(inputManager);
 		if (action == PauseMenu.Action.PAUSE && runSession != null)
 			runSession.stopActiveSegment(System.nanoTime());
+		if (action == PauseMenu.Action.SETTINGS)
+			this.pauseMenu.openSettings(this.width, this.height, this.fps);
 		if (action == PauseMenu.Action.QUIT) {
 			this.abandoned = true;
 			if (recordsService != null && runSession != null)
