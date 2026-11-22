@@ -1,6 +1,7 @@
 package entity.item;
 
 import entity.Ship;
+import engine.GameClock;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -30,14 +31,14 @@ public class BuffManager {
 
         if (item.getDuration() > 0) {
             long expirationTime =
-                    System.currentTimeMillis() + item.getDuration();
+                    GameClock.now() + item.getDuration();
 
             this.activeBuffs.put(item, expirationTime);
         }
     }
 
     public void update(final Ship ship) {
-        long currentTime = System.currentTimeMillis();
+        long currentTime = GameClock.now();
 
         Iterator<Map.Entry<Item, Long>> iterator =
                 this.activeBuffs.entrySet().iterator();
@@ -66,7 +67,7 @@ public class BuffManager {
 
     public Map<String, Long> getActiveBuffsRemainingTime() {
         Map<String, Long> remainingTimes = new HashMap<>();
-        long currentTime = System.currentTimeMillis();
+        long currentTime = GameClock.now();
 
         for (Map.Entry<Item, Long> entry : this.activeBuffs.entrySet()) {
             long remaining = Math.max(

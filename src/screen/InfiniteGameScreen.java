@@ -24,6 +24,7 @@ import engine.Cooldown;
 import engine.ControlsConfig;
 import engine.Core;
 import engine.DrawManager.SpriteType;
+import engine.GameClock;
 import engine.GameState;
 import entity.Bullet;
 import entity.BulletPool;
@@ -98,6 +99,8 @@ public class InfiniteGameScreen extends Screen {
 			final int height, final int fps, final RunSession runSession,
 			final ShipType shipType) {
 		super(width, height, fps);
+		// A new run always starts with the game clock running.
+		GameClock.reset();
 		this.shipType = shipType;
 		this.runSession = runSession;
 		this.recordsService = Core.getRecordsService();
@@ -127,7 +130,7 @@ public class InfiniteGameScreen extends Screen {
 		this.spawnCooldown.reset();
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
 		this.particleSystem = new ParticleSystem();
-		this.gameStartTime = System.currentTimeMillis();
+		this.gameStartTime = GameClock.now();
 		this.lastCountdown = -1;
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
@@ -310,7 +313,7 @@ public class InfiniteGameScreen extends Screen {
 
 		if (!this.inputDelay.checkFinished()) {
 			int countdown = (int) ((INPUT_DELAY
-					- (System.currentTimeMillis() - this.gameStartTime)) / 1000);
+					- (GameClock.now() - this.gameStartTime)) / 1000);
 			playCountdownSound(countdown);
 			drawManager.drawCountDown(this, "Infinite Mode", countdown);
 			drawManager.drawHorizontalLine(this,
