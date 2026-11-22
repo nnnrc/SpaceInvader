@@ -49,6 +49,18 @@ public final class BossHudInfo {
         return this.bossState;
     }
 
+    /**
+     * Returns how much health the boss has left, used to size the health
+     * bar.
+     *
+     * @return Share of health left, from 0 (no health) to 1 (full health).
+     */
+    public double getHealthRatio() {
+        if (this.maxHealth <= 0)
+            return 0;
+        return (double) this.currentHealth / this.maxHealth;
+    }
+
     /** @return True if the HUD should show the boss health bar. */
     public boolean isVisible() {
         return this.bossState != Boss.State.DEFEATED;

@@ -62,7 +62,7 @@ class EndlessRewardIntegrationTest {
 
     @AfterEach
     void restoreSession() throws Exception {
-        key(false);
+        key(KeyEvent.VK_ESCAPE, false);
         AudioManager.stopBGM();
         AudioManager.setMuted(previousMute);
         swapCore("shopController", previousShop);
@@ -104,18 +104,23 @@ class EndlessRewardIntegrationTest {
     }
 
     @Test
-    void escapeKeepsEarnedCreditsEvenThoughTheRunIsAbandonedForRecords() throws Exception {
+    void quittingKeepsEarnedCreditsEvenThoughTheRunIsAbandonedForRecords() throws Exception {
         InfiniteGameScreen game = screen("escape");
         Core.runEndless(game, endless, current -> {
             current.initialize();
             killEnemy(current);
             set(current, "inputDelay", Core.getCooldown(0));
             set(current, "isRunning", true);
-            key(true);
-            try {
-                call(current, "update");
-            } finally {
-                key(false);
+            for (int code : new int[] { KeyEvent.VK_ESCAPE, KeyEvent.VK_DOWN,
+                    KeyEvent.VK_SPACE, KeyEvent.VK_DOWN, KeyEvent.VK_SPACE }) {
+                key(code, true);
+                try {
+                    call(current, "update");
+                } finally {
+                    key(code, false);
+                }
+                if (Boolean.TRUE.equals(get(current, "isRunning")))
+                    call(current, "update");
             }
             assertTrue(current.isAbandoned());
             assertEquals(Boolean.FALSE, get(current, "isRunning"));
@@ -248,9 +253,9 @@ class EndlessRewardIntegrationTest {
         return (Set<Bullet>) get(screen, name);
     }
 
-    private static void key(boolean pressed) {
+    private static void key(int code, boolean pressed) {
         KeyEvent event = new KeyEvent(new Canvas(), pressed ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
-                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
+                System.currentTimeMillis(), 0, code, KeyEvent.CHAR_UNDEFINED);
         if (pressed) Core.getInputManager().keyPressed(event);
         else Core.getInputManager().keyReleased(event);
     }

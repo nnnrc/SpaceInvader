@@ -29,6 +29,8 @@ public class ShieldItem extends Item {
             ship.setShieldActive(true);
             AudioManager.playSFX("audio/sfx/status_shield_on.wav");
             Core.getLogger().info("Energy Shield activated for 15 seconds.");
+        } else if (ship != null) {
+            AudioManager.playSFX("audio/sfx/item_pickup.wav");
         }
     }
 

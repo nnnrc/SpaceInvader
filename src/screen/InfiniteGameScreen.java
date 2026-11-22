@@ -29,6 +29,7 @@ import entity.Bullet;
 import entity.BulletPool;
 import entity.Entity;
 import entity.Ship;
+import entity.ShipType;
 import entity.ZigzagEnemyShip;
 import engine.DifficultyAdjustWhilePlaying;
 
@@ -55,6 +56,7 @@ public class InfiniteGameScreen extends Screen {
 		return (int) DifficultyAdjustWhilePlaying.getInstance().adjustEnemyBulletSpeed(ENEMY_BULLET_SPEED);
 	}
 
+	private final ShipType shipType;
 	private Ship ship;
 	private List<ZigzagEnemyShip> enemies;
 	private Set<Bullet> bullets;
@@ -71,6 +73,8 @@ public class InfiniteGameScreen extends Screen {
 	private boolean gameOver;
 	private RunSession runSession;
 	private boolean abandoned;
+	/** Pause menu opened with Esc during the run. */
+	private final PauseMenu pauseMenu = new PauseMenu();
 	private RecordsService recordsService;
 	private Achievement visibleAchievement;
 	private long achievementNoticeUntil;
@@ -87,7 +91,14 @@ public class InfiniteGameScreen extends Screen {
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps, final RunSession runSession) {
+		this(gameState, width, height, fps, runSession, ShipType.STANDARD);
+	}
+
+	public InfiniteGameScreen(final GameState gameState, final int width,
+			final int height, final int fps, final RunSession runSession,
+			final ShipType shipType) {
 		super(width, height, fps);
+		this.shipType = shipType;
 		this.runSession = runSession;
 		this.recordsService = Core.getRecordsService();
 		this.recordsEvents.subscribe(EnemyDefeatedEvent.class,
@@ -108,7 +119,7 @@ public class InfiniteGameScreen extends Screen {
 	public final void initialize() {
 		super.initialize();
 
-		this.ship = new Ship(this.width / 2, this.height - 30);
+		this.ship = new Ship(this.width / 2, this.height - 30, this.shipType);
 		this.enemies = new ArrayList<ZigzagEnemyShip>();
 		this.bullets = new HashSet<Bullet>();
 		this.enemyBullets = new HashSet<Bullet>();
@@ -134,6 +145,8 @@ public class InfiniteGameScreen extends Screen {
 
 	protected final void update() {
 		super.update();
+		if (handlePauseMenu())
+			return;
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
@@ -153,16 +166,6 @@ public class InfiniteGameScreen extends Screen {
 			if (runSession != null) runSession.startActiveSegment(System.nanoTime());
 			if (runSession != null && recordsService != null)
 				recordsService.activeDuration(runSession.getRunId(), runSession.getActiveDurationMillis(System.nanoTime()));
-			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-				this.abandoned = true;
-				if (recordsService != null && runSession != null) recordsService.abandonRun(runSession.getRunId());
-				if (runSession != null) runSession.stopActiveSegment(System.nanoTime());
-				// Leaving with Esc plays the same back sound as the menu screens.
-				AudioManager.playSFX("audio/sfx/menu_back.wav");
-				this.isRunning = false;
-				return;
-			}
-
 			updatePlayerControls();
 			spawnEnemy();
 			moveEnemies();
@@ -315,6 +318,8 @@ public class InfiniteGameScreen extends Screen {
 			drawManager.drawHorizontalLine(this,
 					this.height / 2 + this.height / 12);
 		}
+		if (this.pauseMenu.isOpen())
+			drawManager.drawPauseMenu(this, this.pauseMenu);
 		drawManager.completeDrawing(this);
 	}
 
@@ -445,6 +450,42 @@ public class InfiniteGameScreen extends Screen {
 	}
 
 	public boolean isAbandoned() { return this.abandoned; }
+
+	/**
+	 * @return Whether the pause menu is open.
+	 */
+	public boolean isPaused() {
+		return this.pauseMenu.isOpen();
+	}
+
+	/**
+	 * Opens, uses and closes the pause menu. While it is open, the run does
+	 * not move: only the menu reacts to the keys and the screen is redrawn
+	 * with the menu on top. Quitting abandons the run, as Esc did before.
+	 *
+	 * @return Whether the rest of the update must be skipped.
+	 */
+	private boolean handlePauseMenu() {
+		if (!this.inputDelay.checkFinished() || this.gameOver)
+			return false;
+
+		PauseMenu.Action action = this.pauseMenu.update(inputManager);
+		if (action == PauseMenu.Action.PAUSE && runSession != null)
+			runSession.stopActiveSegment(System.nanoTime());
+		if (action == PauseMenu.Action.QUIT) {
+			this.abandoned = true;
+			if (recordsService != null && runSession != null)
+				recordsService.abandonRun(runSession.getRunId());
+			this.isRunning = false;
+			return true;
+		}
+
+		if (this.pauseMenu.isOpen()) {
+			draw();
+			return true;
+		}
+		return false;
+	}
 
 	public final GameState getGameState() {
 		return new GameState(1, this.score, this.lives, this.bulletsShot,
