@@ -128,6 +128,8 @@ public final class DrawManager {
     private static BufferedImage backBuffer;
     /** Normal sized font. */
     private static Font fontRegular;
+    /** Small pixel font for the equipped ship label. */
+    private static Font fontEquippedLabel;
     /** Normal sized font properties. */
     private static FontMetrics fontRegularMetrics;
     /** Big sized font. */
@@ -237,6 +239,7 @@ public final class DrawManager {
 
             // Font loading.
             fontRegular = fileManager.loadFont(14f);
+            fontEquippedLabel = fontRegular.deriveFont(12f);
             fontBig = fileManager.loadFont(24f);
             logger.info("Finished loading the fonts.");
 
@@ -2223,7 +2226,7 @@ public final class DrawManager {
 
     /**
      * Draws the ship selection screen, listing every selectable ship with its
-     * stats and marking the highlighted one.
+     * stats, highlighting the cursor and framing the equipped ship.
      *
      * @param screen
      *                      Screen to draw on.
@@ -2231,9 +2234,11 @@ public final class DrawManager {
      *                      Index of the currently highlighted ship.
      * @param shipTypes
      *                      Ships available for selection, in display order.
+     * @param equippedShip
+     *                      Confirmed ship, independent of the highlighted option.
      */
     public void drawShipSelection(final Screen screen, final ShipType[] shipTypes,
-            final int selectedIndex) {
+            final int selectedIndex, final ShipType equippedShip) {
         String titleString = "SELECT SHIP";
         String instructionsString = Core.getShopController().isShipAvailable(shipTypes[selectedIndex])
                 ? "SPACE: SELECT   ESC: BACK" : "UNLOCK IN SHOP   ESC: BACK";
@@ -2246,6 +2251,9 @@ public final class DrawManager {
 
         for (int i = 0; i < shipTypes.length; i++) {
             ShipType type = shipTypes[i];
+            boolean isEquipped = type == equippedShip;
+            if (isEquipped)
+                drawEquippedShipFrame(screen, startY + i * spacing);
             boolean isSelected = (i == selectedIndex);
             boolean available = Core.getShopController().isShipAvailable(type);
 
@@ -2254,9 +2262,9 @@ public final class DrawManager {
                 drawIcon(Icon.LOCK, screen.getWidth() / 2 - Icon.LOCK.getWidth() * scale / 2,
                         startY + i * spacing - 50, scale, Color.GRAY);
             } else if (isSelected) {
-                entity.Ship previewShip = new entity.Ship(screen.getWidth() / 2 - 13,
-                        startY + i * spacing - 40, type);
-                drawEntity(previewShip, screen.getWidth() / 2 - 13, startY + i * spacing - 40);
+                backBufferGraphics.setColor(Color.GREEN);
+                drawSprite(ShipSprites.forType(type), screen.getWidth() / 2 - 13,
+                        startY + i * spacing - 40);
             }
 
             String name = (isSelected ? "> " : "") + type.getName()
@@ -2264,13 +2272,56 @@ public final class DrawManager {
             String stats = String.format("SPEED: %d | HP: %d | RELOAD: %dMS",
                     type.getSpeed(), type.getMaxLives(), type.getShootingInterval());
 
+            if (isEquipped) {
+                drawEquippedShipName(screen, name, startY + i * spacing, isSelected);
+            } else {
+                backBufferGraphics.setColor(isSelected ? Color.GREEN : Color.GRAY);
+                drawCenteredRegularString(screen, name, startY + i * spacing);
+            }
             backBufferGraphics.setColor(isSelected ? Color.GREEN : Color.GRAY);
-            drawCenteredRegularString(screen, name, startY + i * spacing);
             drawCenteredRegularString(screen, stats, startY + i * spacing + 20);
         }
 
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, instructionsString, screen.getHeight() - 60);
+    }
+
+    private static final int EQUIPPED_FRAME_WIDTH = 318;
+    private static final int EQUIPPED_FRAME_MARGIN = 20;
+    private static final int EQUIPPED_FRAME_THICKNESS = 2;
+    private static final int EQUIPPED_FRAME_TOP_OFFSET = 48;
+    private static final int EQUIPPED_FRAME_HEIGHT = 80;
+    private static final int EQUIPPED_LABEL_GAP = 8;
+    private static final String EQUIPPED_LABEL = "[EQUIPPED]";
+
+    /** The white frame stays with the confirmed ship while the green cursor moves. */
+    private void drawEquippedShipFrame(final Screen screen, final int baseline) {
+        int frameTop = baseline - EQUIPPED_FRAME_TOP_OFFSET;
+        int frameWidth = Math.min(EQUIPPED_FRAME_WIDTH,
+                screen.getWidth() - EQUIPPED_FRAME_MARGIN * 2);
+        int frameLeft = (screen.getWidth() - frameWidth) / 2;
+        backBufferGraphics.setColor(Color.WHITE);
+        for (int inset = 0; inset < EQUIPPED_FRAME_THICKNESS; inset++)
+            backBufferGraphics.drawRect(frameLeft + inset, frameTop + inset,
+                    frameWidth - inset * 2 - 1, EQUIPPED_FRAME_HEIGHT - inset * 2 - 1);
+    }
+
+    /** Centers the ship name and equipped label together on the same line. */
+    private void drawEquippedShipName(final Screen screen, final String name,
+            final int baseline, final boolean highlighted) {
+        int nameWidth = fontRegularMetrics.stringWidth(name);
+        FontMetrics labelMetrics = backBufferGraphics.getFontMetrics(fontEquippedLabel);
+        int totalWidth = nameWidth + EQUIPPED_LABEL_GAP
+                + labelMetrics.stringWidth(EQUIPPED_LABEL);
+        int left = (screen.getWidth() - totalWidth) / 2;
+
+        backBufferGraphics.setFont(fontRegular);
+        backBufferGraphics.setColor(highlighted ? Color.GREEN : Color.WHITE);
+        backBufferGraphics.drawString(name, left, baseline);
+        backBufferGraphics.setFont(fontEquippedLabel);
+        backBufferGraphics.setColor(Color.WHITE);
+        int labelX = left + nameWidth + EQUIPPED_LABEL_GAP;
+        backBufferGraphics.drawString(EQUIPPED_LABEL, labelX, baseline);
     }
 
     /**
