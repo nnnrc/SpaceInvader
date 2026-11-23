@@ -62,12 +62,6 @@ public class Frame extends JFrame {
 		addKeyListener(Core.getInputManager());
 		getContentPane().addMouseListener(Core.getInputManager());
 		getContentPane().addMouseMotionListener(Core.getInputManager());
-
-		// Tab still toggles the name field's input language for now (this
-		// is being removed in favor of OS-level switching in a follow-up
-		// change), so it must not be swallowed by Swing's focus traversal
-		// instead.
-		setFocusTraversalKeysEnabled(false);
 	}
 
 	/**
