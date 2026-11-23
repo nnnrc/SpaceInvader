@@ -1,7 +1,9 @@
 package screen;
 
+import javax.swing.SwingUtilities;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
 
 /**
@@ -22,8 +24,15 @@ import javax.swing.text.DocumentFilter;
  * must be allowed even exactly at the cap, or Hangul composition would
  * silently break one character before the limit.
  *
- * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
- *
+ * Disallowed characters (space, punctuation) are not dropped inside the
+ * edit itself. An input method commits its text together with the key
+ * that ended the composition (for example "글 " when Space is pressed
+ * after 글) and expects the document to grow by exactly that much. If the
+ * filter dropped the space right there, the document would end up one
+ * character shorter than the input method expects, and on macOS it then
+ * deletes the character before the committed one. So the edit is applied
+ * as is, and the disallowed characters are removed right after it, on
+ * the next turn of the Swing event thread.
  */
 public final class NameInputFilter extends DocumentFilter {
 
@@ -68,10 +77,10 @@ public final class NameInputFilter extends DocumentFilter {
 	 * in order.
 	 *
 	 * @param text
-	 *             Text to filter.
+	 *             Text to clean up.
 	 * @return The same text, with disallowed characters removed.
 	 */
-	private static String keepAllowed(final String text) {
+	public static String keepAllowed(final String text) {
 		if (text == null || text.isEmpty())
 			return "";
 		StringBuilder kept = new StringBuilder(text.length());
@@ -84,51 +93,118 @@ public final class NameInputFilter extends DocumentFilter {
 	}
 
 	/**
-	 * Truncates filtered text so that, once it replaces a given range,
-	 * the document does not exceed {@link #MAX_LENGTH} characters.
+	 * Counts the allowed characters of a string.
 	 *
-	 * @param filteredText
-	 *                      Text already stripped of disallowed
-	 *                      characters.
-	 * @param currentLength
-	 *                      The document's current length.
-	 * @param replacedLength
-	 *                       Length of the range this text is replacing
-	 *                       (0 for a plain insert).
-	 * @return Text truncated to fit within the length cap.
+	 * @param text
+	 *             Text to count.
+	 * @return Number of allowed characters.
 	 */
-	private static String truncateToFit(final String filteredText,
-			final int currentLength, final int replacedLength) {
-		int lengthAfterRemoval = currentLength - replacedLength;
-		int roomLeft = MAX_LENGTH - lengthAfterRemoval;
-		if (roomLeft <= 0)
-			return "";
-		if (filteredText.length() <= roomLeft)
-			return filteredText;
-		return filteredText.substring(0, roomLeft);
+	private static int countAllowed(final String text) {
+		int count = 0;
+		for (int i = 0; i < text.length(); i++) {
+			if (isAllowed(text.charAt(i)))
+				count++;
+		}
+		return count;
+	}
+
+	/**
+	 * Shortens the text of an edit so that, once the edit is applied, the
+	 * document holds at most {@link #MAX_LENGTH} allowed characters.
+	 * Disallowed characters are kept here; they are removed right after
+	 * the edit (see {@link #removeDisallowedLater}).
+	 *
+	 * @param text
+	 *             Text the edit inserts.
+	 * @param allowedLeft
+	 *             Allowed characters left in the document once the
+	 *             replaced range is gone.
+	 * @return Text shortened to fit within the length cap.
+	 */
+	private static String truncateToFit(final String text,
+			final int allowedLeft) {
+		int roomLeft = MAX_LENGTH - allowedLeft;
+		StringBuilder kept = new StringBuilder(text.length());
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if (!isAllowed(c)) {
+				kept.append(c);
+			} else if (roomLeft > 0) {
+				kept.append(c);
+				roomLeft--;
+			}
+		}
+		return kept.toString();
+	}
+
+	/**
+	 * Counts the allowed characters left in a document once a range is
+	 * removed from it.
+	 */
+	private static int allowedLeftAfterRemoving(final Document document,
+			final int offset, final int length) throws BadLocationException {
+		String all = document.getText(0, document.getLength());
+		return countAllowed(all.substring(0, offset))
+				+ countAllowed(all.substring(offset + length));
+	}
+
+	/**
+	 * Removes every disallowed character from a document, from the last
+	 * one to the first so that earlier offsets stay valid.
+	 *
+	 * @param document
+	 *                 Document to clean up.
+	 */
+	static void removeDisallowed(final Document document) {
+		try {
+			String all = document.getText(0, document.getLength());
+			for (int i = all.length() - 1; i >= 0; i--) {
+				if (!isAllowed(all.charAt(i)))
+					document.remove(i, 1);
+			}
+		} catch (BadLocationException e) {
+			// The document changed in between; the next edit cleans it up.
+		}
+	}
+
+	/**
+	 * Schedules {@link #removeDisallowed} once the current edit (and the
+	 * input method event that caused it) is finished.
+	 */
+	private static void removeDisallowedLater(final Document document,
+			final String text) {
+		if (countAllowed(text) != text.length())
+			SwingUtilities.invokeLater(() -> removeDisallowed(document));
 	}
 
 	@Override
 	public void insertString(final FilterBypass fb, final int offset,
 			final String string, final AttributeSet attr)
 			throws BadLocationException {
-		String text = truncateToFit(keepAllowed(string),
-				fb.getDocument().getLength(), 0);
-		if (!text.isEmpty())
+		if (string == null || string.isEmpty())
+			return;
+		Document document = fb.getDocument();
+		String text = truncateToFit(string,
+				allowedLeftAfterRemoving(document, offset, 0));
+		if (!text.isEmpty()) {
 			super.insertString(fb, offset, text, attr);
+			removeDisallowedLater(document, text);
+		}
 	}
 
 	@Override
 	public void replace(final FilterBypass fb, final int offset,
 			final int length, final String text, final AttributeSet attrs)
 			throws BadLocationException {
-		String filtered = truncateToFit(keepAllowed(text),
-				fb.getDocument().getLength(), length);
-		// Still perform the replace even when filtered is empty: this is
+		Document document = fb.getDocument();
+		String fitted = text == null ? "" : truncateToFit(text,
+				allowedLeftAfterRemoving(document, offset, length));
+		// Still perform the replace even when fitted is empty: this is
 		// how an in-progress Hangul composition is cleared/shortened
 		// (e.g. backspacing mid-syllable), not just how new text is
 		// rejected.
-		super.replace(fb, offset, length, filtered, attrs);
+		super.replace(fb, offset, length, fitted, attrs);
+		removeDisallowedLater(document, fitted);
 	}
 
 	// remove() is intentionally not overridden: deleting characters
