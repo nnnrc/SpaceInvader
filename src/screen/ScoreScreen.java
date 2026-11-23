@@ -55,10 +55,17 @@ public class ScoreScreen extends Screen {
 	private List<Score> highScores;
 	/** Checks if current score is a new high score. */
 	private boolean isNewRecord;
-	/** Player name for record input, typed freely into {@link #nameField}. */
-	private String name = "";
-	/** Whether the name has been confirmed (Enter) and saved already. */
-	private boolean nameConfirmed;
+	/**
+	 * Player name for record input, typed freely into {@link #nameField}.
+	 * Volatile because it is written on the Swing event thread (Enter)
+	 * and read on the game thread.
+	 */
+	private volatile String name = "";
+	/**
+	 * Whether the name has been confirmed (Enter) and saved already.
+	 * Volatile for the same reason as {@link #name}.
+	 */
+	private volatile boolean nameConfirmed;
 	/**
 	 * Visible text field the player types their name into directly. Shown
 	 * and focused for the whole time a new record's name has not been
@@ -266,8 +273,10 @@ public class ScoreScreen extends Screen {
 	private void confirmName() {
 		if (this.nameConfirmed)
 			return;
-		String typed = this.nameField.getText();
-		if (typed == null || typed.isEmpty())
+		// The filter removes disallowed characters right after each edit;
+		// clean up here too in case Enter comes before that cleanup ran.
+		String typed = NameInputFilter.keepAllowed(this.nameField.getText());
+		if (typed.isEmpty())
 			return;
 
 		this.name = typed;
