@@ -2,6 +2,7 @@ package engine;
 
 import entity.ShipType;
 import entity.item.ChameleonHull;
+import entity.item.BuffStatus;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -1727,22 +1728,38 @@ public final class DrawManager {
                 GRENADE_COUNT_Y);
     }
 
-    /**
-     * Draws the names of the active buffs, top right, under the separator.
-     *
-     * @param screen Screen to draw on.
-     * @param lines Buff names to show.
-     */
-    public void drawBuffs(final Screen screen, final List<String> lines) {
+    /** Below the boss health bar, the laser hint and the achievement notice (y 60-100). */
+    private static final int BUFF_HUD_TOP = 120;
+    private static final int BUFF_LINE_HEIGHT = 26;
+    private static final int BUFF_GAUGE_WIDTH = 80;
+    private static final int BUFF_GAUGE_HEIGHT = 4;
+    private static final int BUFF_GAUGE_GAP = 4;
+    private static final int BUFF_HUD_MARGIN = 10;
+
+    /** Draws each active effect at the top right, with a gauge of its time left. */
+    public void drawBuffs(final Screen screen,
+                          final List<BuffStatus> statuses) {
         backBufferGraphics.setFont(fontRegular);
-        backBufferGraphics.setColor(Color.CYAN);
-        int y = 62;
-        for (String line : lines) {
-            int textWidth = backBufferGraphics.getFontMetrics().stringWidth(line);
-            backBufferGraphics.drawString(line,
-                    screen.getWidth() - textWidth - 10, y);
-            y += 20;
+        int rightEdge = screen.getWidth() - BUFF_HUD_MARGIN;
+        int y = BUFF_HUD_TOP;
+
+        for (BuffStatus status : statuses) {
+            Color color = buffColor(status.kind());
+            int nameWidth = backBufferGraphics.getFontMetrics()
+                    .stringWidth(status.name());
+
+            backBufferGraphics.setColor(color);
+            backBufferGraphics.drawString(status.name(),
+                    rightEdge - nameWidth, y);
+            drawVolumeBar(rightEdge - BUFF_GAUGE_WIDTH, y + BUFF_GAUGE_GAP,
+                    BUFF_GAUGE_WIDTH, BUFF_GAUGE_HEIGHT,
+                    (int) Math.round(status.progress() * 100), color);
+            y += BUFF_LINE_HEIGHT;
         }
+    }
+
+    private static Color buffColor(final BuffStatus.Kind kind) {
+        return kind == BuffStatus.Kind.DEBUFF ? Color.RED : Color.CYAN;
     }
 
     /**

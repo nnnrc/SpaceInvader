@@ -583,6 +583,8 @@ public class GameScreen extends Screen {
 			// Boss stages start the boss music right away, so it already plays
 			// during the countdown instead of switching when the boss appears.
 			AudioManager.playBGM("audio/bgm/music_boss.wav");
+
+            AudioManager.playSFX("audio/sfx/boss_warning_voice.wav");
 			this.isLowHealthBGM = false;
 		} else {
 			AudioManager.playBGM("audio/bgm/music_game.wav");
@@ -956,9 +958,11 @@ public class GameScreen extends Screen {
 
 		// Item HUD: grenades left, active buffs and their time left.
 		drawManager.drawGrenadeCount(this, this.ship.getGrenadeCount());
-		drawManager.drawBuffs(this, BuffHud.buildLines(
-				this.itemManager.getBuffManager().getActiveBuffsRemainingTime(),
-				System.currentTimeMillis()));
+		long buffHudTime = System.currentTimeMillis();
+		drawManager.drawBuffs(this, BuffHud.visible(
+				BuffHud.collect(this.itemManager.getBuffManager(),
+						this.playerStatus, buffHudTime),
+				buffHudTime));
 
 		// The Orbital Annihilator is shown only once it has been caught.
 		if (this.annihilator.isReady())
@@ -1529,8 +1533,12 @@ public class GameScreen extends Screen {
         if (countdown == this.lastCountdown)
             return;
         this.lastCountdown = countdown;
-        if (countdown == 0)
+        if (countdown == 0) {
             AudioManager.playSFX("audio/sfx/countdown_go.wav");
+            if (!isBossLevel(this.level)) {
+                AudioManager.playSFX("audio/sfx/wave_start_voice.wav");
+            }
+        }
         else if (countdown <= 3)
             AudioManager.playSFX("audio/sfx/countdown_beep.wav");
     }
