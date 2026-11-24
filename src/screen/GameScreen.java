@@ -88,6 +88,8 @@ public class GameScreen extends Screen {
 	static final int PERFECT_CLEAR_BONUS = 300;
 	/** Label shown when the Perfect Clear bonus is given. */
 	static final String PERFECT_CLEAR_LABEL = "PERFECT! +" + PERFECT_CLEAR_BONUS;
+	/** Start of the label shown when the boss no-damage bonus is given. */
+	static final String NO_DAMAGE_LABEL = "NO DAMAGE!";
 	/** Average time between falling obstacle spawns, in milliseconds. */
 	private static final int FALLING_OBSTACLE_INTERVAL = 17500;
 	/** Spawn interval varies from fifteen to twenty seconds. */
@@ -218,6 +220,8 @@ public class GameScreen extends Screen {
     private boolean levelFinished;
 	/** Whether a life was lost in this stage, for the Perfect Clear bonus. */
 	private final LifeLossTracker stageLifeLoss = new LifeLossTracker();
+	/** Whether a life was lost since the boss appeared, for its bonus. */
+	private final LifeLossTracker bossLifeLoss = new LifeLossTracker();
     /** Checks if a bonus life is received. */
     private boolean bonusLife;
     /** Orbital Annihilator (Doomsday Laser), only available on level 7. */
@@ -1294,9 +1298,10 @@ public class GameScreen extends Screen {
             return false;
         }
 		AudioManager.playSFX("audio/sfx/player_hit.wav");
-		// Only a life that is really lost cancels the Perfect Clear bonus;
-		// every blocked hit has already returned above.
+		// Only a life that is really lost cancels the Perfect Clear and boss
+		// no-damage bonuses; every blocked hit has already returned above.
 		this.stageLifeLoss.onLifeLost();
+		this.bossLifeLoss.onLifeLost();
 
 		this.ship.destroy();
 		this.ship.triggerDamageFeedback();
@@ -1366,7 +1371,29 @@ public class GameScreen extends Screen {
 			this.score += boss.getType().getPointValue();
 			this.logger.info("Boss " + boss.getType() + " defeated, +"
 					+ boss.getType().getPointValue() + " points.");
+			awardBossNoDamageBonus(boss);
 		}
+	}
+
+	/**
+	 * Gives half of the boss's points as a bonus when it was defeated without
+	 * the player losing a life after it appeared, and shows it under the boss.
+	 * It is called only from the defeat branch of damageBoss, so it is given
+	 * once per boss.
+	 *
+	 * @param boss
+	 *            Boss that was just defeated.
+	 */
+	private void awardBossNoDamageBonus(final Boss boss) {
+		if (!this.bossLifeLoss.isFlawless())
+			return;
+		int bonus = boss.getType().getPointValue() / 2;
+		this.score += bonus;
+		this.floatingScoreHud.showLabel(NO_DAMAGE_LABEL + " +" + bonus,
+				boss.getPositionX() + Boss.WIDTH / 2,
+				boss.getPositionY() + Boss.HEIGHT + 20, SCREEN_CHANGE_INTERVAL);
+		this.logger.info("Boss " + boss.getType()
+				+ " defeated without losing a life, +" + bonus + " points.");
 	}
 
 	/**
@@ -1548,6 +1575,8 @@ public class GameScreen extends Screen {
 		switch (event.getType()) {
 		case SPAWNED:
 			AudioManager.playSFX(BOSS_SPAWN_SOUND);
+			// The no-damage bonus counts from the moment the boss appears.
+			this.bossLifeLoss.start();
 			break;
 		case PHASE_CHANGED:
 			AudioManager.playSFX(BOSS_PHASE_SOUND);
