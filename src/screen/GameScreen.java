@@ -84,6 +84,10 @@ public class GameScreen extends Screen {
     private static final int LIFE_SCORE = 100;
     /** Time from finishing the level to screen change. */
     private static final int SCREEN_CHANGE_INTERVAL = 1500;
+	/** Bonus score for clearing a stage without losing a life. */
+	static final int PERFECT_CLEAR_BONUS = 300;
+	/** Label shown when the Perfect Clear bonus is given. */
+	static final String PERFECT_CLEAR_LABEL = "PERFECT! +" + PERFECT_CLEAR_BONUS;
 	/** Average time between falling obstacle spawns, in milliseconds. */
 	private static final int FALLING_OBSTACLE_INTERVAL = 17500;
 	/** Spawn interval varies from fifteen to twenty seconds. */
@@ -212,6 +216,8 @@ public class GameScreen extends Screen {
     private boolean stageCleared;
     /** Checks if the level is finished. */
     private boolean levelFinished;
+	/** Whether a life was lost in this stage, for the Perfect Clear bonus. */
+	private final LifeLossTracker stageLifeLoss = new LifeLossTracker();
     /** Checks if a bonus life is received. */
     private boolean bonusLife;
     /** Orbital Annihilator (Doomsday Laser), only available on level 7. */
@@ -510,6 +516,8 @@ public class GameScreen extends Screen {
 
 		this.bonusEnemyManager = new BonusEnemyManager();
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
+		// Every stage is a new chance at the Perfect Clear bonus.
+		this.stageLifeLoss.start();
         this.bullets = new HashSet<Bullet>();
 		this.fallingObstacles = new HashSet<FallingObstacle>();
 		this.fallingObstacleCooldown = Core.getVariableCooldown(
@@ -801,6 +809,7 @@ public class GameScreen extends Screen {
                     AudioManager.playSFX("audio/sfx/level_clear.wav");
                     this.screenFinishedCooldown.reset();
                     this.logger.info("Stage " + this.level + " cleared.");
+                    awardPerfectClearBonus();
                     publishLevelCompleted();
 
                     // Notify the difficulty adjustment system when a level is cleared.
@@ -822,6 +831,20 @@ public class GameScreen extends Screen {
 			return;
 		this.recordsEvents.publish(
 				new LevelCompletedEvent(this.level, this.difficulty));
+	}
+
+	/**
+	 * Gives the Perfect Clear bonus when the stage was cleared without losing
+	 * a life, and shows it until the screen changes.
+	 */
+	private void awardPerfectClearBonus() {
+		if (!this.stageLifeLoss.isFlawless())
+			return;
+		this.score += PERFECT_CLEAR_BONUS;
+		this.floatingScoreHud.showLabel(PERFECT_CLEAR_LABEL, this.width / 2,
+				this.height / 2, SCREEN_CHANGE_INTERVAL);
+		this.logger.info("Perfect Clear on stage " + this.level + ", +"
+				+ PERFECT_CLEAR_BONUS + " points.");
 	}
 
     /**
@@ -1271,6 +1294,9 @@ public class GameScreen extends Screen {
             return false;
         }
 		AudioManager.playSFX("audio/sfx/player_hit.wav");
+		// Only a life that is really lost cancels the Perfect Clear bonus;
+		// every blocked hit has already returned above.
+		this.stageLifeLoss.onLifeLost();
 
 		this.ship.destroy();
 		this.ship.triggerDamageFeedback();
