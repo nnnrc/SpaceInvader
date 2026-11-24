@@ -1119,7 +1119,6 @@ public class GameScreen extends Screen {
                         AudioManager.playSFX("audio/sfx/enemy_explosion.wav");
                         this.score += enemyShip.getPointValue();
                         floatingScoreHud.show(enemyShip);
-                        onEnemyDestroyed(enemyShip.getPositionX(), enemyShip.getPositionY(), enemyShip.getPointValue());
                         this.shipsDestroyed++;
                         recordEnemyDefeat(enemyShip);
                         this.particleSystem.spawnEnemyExplosion(
@@ -1216,7 +1215,6 @@ public class GameScreen extends Screen {
                     && OrbitalAnnihilator.hits(this.ship, enemyShip)) {
                 this.score += enemyShip.getPointValue();
                 floatingScoreHud.show(enemyShip);
-                onEnemyDestroyed(enemyShip.getPositionX(), enemyShip.getPositionY(), enemyShip.getPointValue());
                 this.shipsDestroyed++;
                 recordEnemyDefeat(enemyShip);
 
@@ -1773,7 +1771,6 @@ public class GameScreen extends Screen {
             if (!enemy.isDestroyed() && checkCollision(this.ship, enemy)) {
                 this.score += enemy.getPointValue();
                 floatingScoreHud.show(enemy);
-                onEnemyDestroyed(enemy.getPositionX(), enemy.getPositionY(), enemy.getPointValue());
                 this.shipsDestroyed++;
 				recordEnemyDefeat(enemy);
 
@@ -1932,7 +1929,6 @@ public class GameScreen extends Screen {
                             && checkCollision(fragment, enemyShip)) {
                         this.score += enemyShip.getPointValue();
                         floatingScoreHud.show(enemyShip);
-                        onEnemyDestroyed(enemyShip.getPositionX(), enemyShip.getPositionY(), enemyShip.getPointValue());
                         this.shipsDestroyed++;
                         recordEnemyDefeat(enemyShip);
                         this.enemyShipFormation.destroy(enemyShip);
@@ -1979,10 +1975,6 @@ public class GameScreen extends Screen {
         this.floatingTexts.add(new FloatingText(x, y, text, color));
     }
 
-    public void onEnemyDestroyed(final double x, final double y,
-                                 final int pointsEarned) {
-        spawnFloatingText(x, y, "+" + pointsEarned, Color.YELLOW);
-    }
 
     public void onItemCollected(final double x, final double y,
                                 final String label) {
