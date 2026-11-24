@@ -257,7 +257,7 @@ public class InfiniteGameScreen extends Screen {
 		Iterator<ZigzagEnemyShip> iterator = this.enemies.iterator();
 		while (iterator.hasNext()) {
 			ZigzagEnemyShip enemy = iterator.next();
-			enemy.zigzagMove();
+			enemy.moveOneFrame();
 			enemy.update();
 			if (enemy.getPositionY() > this.height)
 				iterator.remove();
