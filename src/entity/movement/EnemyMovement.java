@@ -12,8 +12,13 @@ public interface EnemyMovement {
     record Step(int dx, int dy) {
     }
 
-    /** Returns how far the enemy moves this frame. */
-    Step next();
+    /**
+     * Returns how far the enemy moves this frame.
+     *
+     * @param targetOffsetX Player's center X minus the enemy's center X.
+     * @return Distance to move this frame.
+     */
+    Step next(int targetOffsetX);
 
     /** Whether the enemy fires on the frame just moved; on top of the random shots. */
     default boolean firesThisFrame() {
@@ -21,7 +26,8 @@ public interface EnemyMovement {
     }
 
     /**
-     * Picks the movement for an enemy type: A zigzags, B dives, C hovers and fires.
+     * Picks the movement for an enemy type: A zigzags, B aims and dives,
+     * C hovers and fires.
      *
      * @param spriteType Sprite the enemy spawns with.
      * @param fallSpeed  Base downwards speed, in pixels per frame.

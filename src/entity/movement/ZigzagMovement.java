@@ -21,7 +21,7 @@ public final class ZigzagMovement implements EnemyMovement {
     }
 
     @Override
-    public Step next() {
+    public Step next(final int targetOffsetX) {
         if (Math.abs(this.offsetX + this.direction * LATERAL_SPEED) > AMPLITUDE) {
             this.direction = -this.direction;
         }

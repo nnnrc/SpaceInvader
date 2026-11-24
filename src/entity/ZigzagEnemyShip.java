@@ -33,9 +33,13 @@ public class ZigzagEnemyShip extends EnemyShip {
 
 	/**
 	 * Advances the ship one frame along its movement.
+	 *
+	 * @param targetX
+	 *            Center X of the player's ship, which some movements follow.
 	 */
-	public final void moveOneFrame() {
-		EnemyMovement.Step step = this.movement.next();
+	public final void moveOneFrame(final int targetX) {
+		int centerX = this.positionX + this.width / 2;
+		EnemyMovement.Step step = this.movement.next(targetX - centerX);
 		move(step.dx(), step.dy());
 	}
 

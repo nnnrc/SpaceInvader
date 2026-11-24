@@ -1,8 +1,9 @@
 package entity.movement;
 
 /**
- * Falls a set distance, stops to fire a few shots, then keeps falling.
- * Counts frames instead of time, so pausing the game also pauses the hover.
+ * Falls a set distance, stops and slides towards the player while firing a
+ * few shots, then keeps falling. Counts frames instead of time, so pausing
+ * the game also pauses the hover.
  */
 public final class HoverMovement implements EnemyMovement {
 
@@ -25,13 +26,13 @@ public final class HoverMovement implements EnemyMovement {
     }
 
     @Override
-    public Step next() {
+    public Step next(final int targetOffsetX) {
         boolean hovering = this.fallen >= HOVER_DISTANCE
                 && this.hoverFrame < HOVER_FRAMES;
         if (hovering) {
             this.hoverFrame++;
             this.fires = this.hoverFrame % FIRE_INTERVAL == 0;
-            return new Step(0, 0);
+            return new Step(Integer.signum(targetOffsetX), 0);
         }
         this.fires = false;
         int dy = this.fallStep.next(this.fallSpeed);
