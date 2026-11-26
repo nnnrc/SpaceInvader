@@ -286,7 +286,8 @@ public final class Core {
 				}
 
 				case 12: {
-					ShipSelectionScreen shipSelection = new ShipSelectionScreen(width, height, FPS);
+					ShipSelectionScreen shipSelection = new ShipSelectionScreen(
+							width, height, FPS, selectedShip);
 					currentScreen = shipSelection;
 					int selectionResult = frame.setScreen(currentScreen);
 

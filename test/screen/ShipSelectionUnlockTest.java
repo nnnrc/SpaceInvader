@@ -127,6 +127,70 @@ class ShipSelectionUnlockTest {
         assertTrue(shop.snapshot().getUnlockedContentIds().isEmpty());
     }
 
+    @Test
+    void parkedMouseDoesNotOverrideEquippedShipOrKeyboardNavigation() throws Exception {
+        moveMouseTo(ShipType.STANDARD);
+        openWithEquippedShip(ShipType.TANK);
+        screen.update();
+        assertEquals(ShipType.TANK, screen.getSelectedShip());
+
+        tap(KeyEvent.VK_UP);
+        assertEquals(ShipType.SPEEDSTER, screen.getSelectedShip());
+        screen.update();
+        assertEquals(ShipType.SPEEDSTER, screen.getSelectedShip());
+        assertEquals(ShipType.TANK, screen.getEquippedShip());
+    }
+
+    @Test
+    void movingTheMouseStillChangesTheHighlightedShip() {
+        openWithEquippedShip(ShipType.TANK);
+        moveMouseTo(ShipType.STANDARD);
+        screen.update();
+        assertEquals(ShipType.STANDARD, screen.getSelectedShip());
+        moveMouseTo(ShipType.SPEEDSTER);
+        screen.update();
+        assertEquals(ShipType.SPEEDSTER, screen.getSelectedShip());
+        assertEquals(ShipType.TANK, screen.getEquippedShip());
+        assertTrue(screen.isRunning);
+    }
+
+    @Test
+    void clickingTheParkedMouseCanExplicitlyConfirmAnotherShip() {
+        moveMouseTo(ShipType.STANDARD);
+        openWithEquippedShip(ShipType.TANK);
+        screen.update();
+        assertEquals(ShipType.TANK, screen.getSelectedShip());
+
+        Core.getInputManager().mousePressed(new MouseEvent(inputSource, MouseEvent.MOUSE_PRESSED,
+                0, 0, 224, screen.getHeight() / 3, 1, false, MouseEvent.BUTTON1));
+        screen.update();
+        assertFalse(screen.isRunning);
+        assertEquals(ShipSelectionScreen.SHIP_SELECTED, screen.returnCode);
+        assertEquals(ShipType.STANDARD, screen.getSelectedShip());
+    }
+
+    @Test
+    void escapingAfterBrowsingDoesNotChangeTheEquippedShip() throws Exception {
+        openWithEquippedShip(ShipType.TANK);
+        tap(KeyEvent.VK_UP);
+        tap(KeyEvent.VK_ESCAPE);
+        assertFalse(screen.isRunning);
+        assertEquals(ShipSelectionScreen.RETURN_TO_HANGAR_MENU, screen.returnCode);
+        assertEquals(ShipType.TANK, screen.getEquippedShip());
+    }
+
+    private void openWithEquippedShip(final ShipType ship) {
+        screen = new ShipSelectionScreen(448, 520, 60, ship);
+        screen.inputDelay = Core.getCooldown(0);
+        screen.isRunning = true;
+    }
+
+    private void moveMouseTo(final ShipType ship) {
+        int y = screen.getHeight() / 3 + ship.ordinal() * 85;
+        Core.getInputManager().mouseMoved(new MouseEvent(inputSource, MouseEvent.MOUSE_MOVED,
+                0, 0, 224, y, 0, false));
+    }
+
     private static Stream<Arguments> simultaneousInputs() {
         return Stream.of(
                 Arguments.of(ShipType.STANDARD, KeyEvent.VK_DOWN),
