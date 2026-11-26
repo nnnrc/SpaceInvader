@@ -53,3 +53,11 @@ Third-party background music used in this project and their licenses.
 - Original: "Stereotypical 90's space shooter music" by Jan125
 - Source: https://opengameart.org/content/stereotypical-90s-space-shooter-music
 - Licence: OGA-BY 3.0 (https://opengameart.org/content/oga-by-30-faq)
+
+
+## Fonts
+
+- **Galmuri14** by Quiple (Minseo Lee)
+    - Source: https://github.com/Quiple/Galmuri
+    - License: SIL Open Font License 1.1 (see `res/font-license/galmuri_LICENSE.txt`)
+    - Used for: Korean characters in the score name input and high score screen

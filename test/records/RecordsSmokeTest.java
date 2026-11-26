@@ -505,8 +505,8 @@ private static void testRecordsPageNavigationAndRender() {
 				draw.completeDrawing(page);
 			}
 			draw.initDrawing(page);
-			draw.drawAchievementResults(page, 10000, 0, 20, 0.5f, true,
-					new char[] { 'A', 'A', 'A' }, 0,
+			draw.drawAchievementResults(page, 10000, 0, 20, 0.5f, true, true,
+					"ABC",
 					java.util.Arrays.asList(Achievement.values()), true, 0);
 			javax.imageio.ImageIO.write((java.awt.image.BufferedImage) buffer.get(null),
 					"png", directory.resolve("results.png").toFile());
