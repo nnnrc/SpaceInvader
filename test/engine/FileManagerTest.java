@@ -14,7 +14,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -204,6 +206,38 @@ class FileManagerTest {
     @DisplayName("savePlayerAssets rejects null state before I/O begins")
     void testSaveNullStateThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> fileManager.savePlayerAssets(null, savePath));
+    }
+
+    @Test
+    @DisplayName("Round-trip of high scores preserves Korean, jamo-only and English names")
+    void testHighScoreRoundTripWithKoreanName() throws IOException {
+        String previous = System.getProperty("invaders.storageDir");
+        try {
+            System.setProperty("invaders.storageDir", tempDir.toString());
+
+            List<Score> scores = new ArrayList<>();
+            scores.add(new Score("한글이름테스트", 9999));
+            scores.add(new Score("ABC", 500));
+            scores.add(new Score("ㅋㅋ", 100));
+
+            fileManager.saveHighScores(scores);
+            List<Score> loaded = fileManager.loadHighScores();
+
+            assertEquals(3, loaded.size());
+            // loadHighScores sorts descending by score.
+            assertEquals("한글이름테스트", loaded.get(0).getName());
+            assertEquals(9999, loaded.get(0).getScore());
+            assertEquals("ABC", loaded.get(1).getName());
+            assertEquals(500, loaded.get(1).getScore());
+            assertEquals("ㅋㅋ", loaded.get(2).getName());
+            assertEquals(100, loaded.get(2).getScore());
+        } finally {
+            if (previous == null) {
+                System.clearProperty("invaders.storageDir");
+            } else {
+                System.setProperty("invaders.storageDir", previous);
+            }
+        }
     }
 
     @Test

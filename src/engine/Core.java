@@ -35,6 +35,7 @@ import screen.ScoreScreen;
 import screen.Screen;
 import screen.TitleScreen;
 import entity.ShipType;
+import screen.ShipCustomization;
 import screen.ShipSelectionScreen;
 import screen.PlayerRecordsScreen;
 import campaign.CampaignStageData;
@@ -145,7 +146,9 @@ public final class Core {
 			LOGGER.warning(recordsService.getLoadWarning());
 
 		GameState gameState;
-		ShipType selectedShip = ShipType.STANDARD;
+		ShipType selectedShip = HangarConfig.loadShip(shopController::isShipAvailable);
+		ShipCustomization.setColorIndex(
+				HangarConfig.loadColorIndex(ShipCustomization.getColorCount()));
 
 		int returnCode = 1;
 		do {
@@ -283,12 +286,14 @@ public final class Core {
 				}
 
 				case 12: {
-					ShipSelectionScreen shipSelection = new ShipSelectionScreen(width, height, FPS);
+					ShipSelectionScreen shipSelection = new ShipSelectionScreen(
+							width, height, FPS, selectedShip);
 					currentScreen = shipSelection;
 					int selectionResult = frame.setScreen(currentScreen);
 
 					if (selectionResult == ShipSelectionScreen.SHIP_SELECTED) {
 						selectedShip = shipSelection.getSelectedShip();
+						HangarConfig.saveShip(selectedShip);
 					}
 
 					returnCode = 11;
@@ -542,6 +547,18 @@ public final class Core {
 	 */
 	public static InputManager getInputManager() {
 		return InputManager.getInstance();
+	}
+
+	/**
+	 * Controls access to the application window, so screens can layer
+	 * their own Swing components (e.g. a visible name-input field) on
+	 * top of the game's own drawing via
+	 * {@link Frame#addOverlayComponent(javax.swing.JComponent)}.
+	 *
+	 * @return Application frame.
+	 */
+	public static Frame getFrame() {
+		return frame;
 	}
 
 	/**

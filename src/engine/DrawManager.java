@@ -2,12 +2,18 @@ package engine;
 
 import entity.ShipType;
 import entity.item.ChameleonHull;
+import entity.item.BuffStatus;
 
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -131,12 +137,17 @@ public final class DrawManager {
     private static Font fontRegular;
     /** Pixel font sized to fill the Endless MAX bar. */
     private static Font fontSpeedMax;
+    /** Small pixel font for the equipped ship label. */
+    private static Font fontEquippedLabel;
     /** Normal sized font properties. */
     private static FontMetrics fontRegularMetrics;
     /** Big sized font. */
     private static Font fontBig;
     /** Big sized font properties. */
     private static FontMetrics fontBigMetrics;
+    /** Fallback font used for characters the regular pixel font cannot
+     * display, such as Hangul syllables (e.g. Korean score names). */
+    private static Font fontKorean;
 
     /** Color of the key caps on the How to Play screen. */
     private static final Color KEY_CAP_COLOR = new Color(255, 220, 70);
@@ -241,7 +252,14 @@ public final class DrawManager {
             // Font loading.
             fontRegular = fileManager.loadFont(14f);
             fontSpeedMax = fontRegular.deriveFont(16f);
+            fontEquippedLabel = fontRegular.deriveFont(12f);
             fontBig = fileManager.loadFont(24f);
+            try {
+                fontKorean = fileManager.loadFont(14f, "Galmuri14.ttf");
+            } catch (IOException | FontFormatException e) {
+                logger.warning("Korean fallback font could not be loaded; "
+                        + "Hangul characters will not display correctly.");
+            }
             logger.info("Finished loading the fonts.");
 
         } catch (IOException e) {
@@ -872,8 +890,23 @@ public final class DrawManager {
      */
     public void drawGameOver(final Screen screen, final boolean acceptsInput,
             final boolean isNewRecord, final boolean gameCleared) {
+        drawGameOver(screen, acceptsInput, isNewRecord, gameCleared, false);
+    }
+
+    /**
+     * @param nameEntryPending
+     *                         Whether a new-record name is still being
+     *                         typed (not yet confirmed with Enter); while
+     *                         true, Space does not play again, so the
+     *                         prompt does not claim it does.
+     */
+    public void drawGameOver(final Screen screen, final boolean acceptsInput,
+            final boolean isNewRecord, final boolean gameCleared,
+            final boolean nameEntryPending) {
         String gameOverString = gameCleared ? "Game Clear" : "Game Over";
-        String continueOrExitString = "Press Space to play again, Escape to exit";
+        String continueOrExitString = nameEntryPending
+                ? "Press Escape to cancel"
+                : "Press Space to play again, Escape to exit";
 
         int gameOverY;
 
@@ -1109,20 +1142,86 @@ public final class DrawManager {
             final List<Score> highScores) {
         backBufferGraphics.setColor(Color.WHITE);
         int i = 0;
-        String scoreString = "";
+
+        // Fixed left/right columns instead of centering each row's full
+        // "name + score" string: names can now be anywhere from 1 to 10
+        // characters (Hangul, English or digits), so centering the whole
+        // line would shift the score to a different X on every row.
+        // Anchoring the rank badge and name to a fixed left margin and
+        // the score to a fixed right margin keeps the score column
+        // aligned regardless of name length.
+        int badgeX = 40;
+        int nameX = badgeX + RankBadge.WIDTH * 2 + 12;
+        int scoreRightX = screen.getWidth() - 40;
 
         for (Score score : highScores) {
-            scoreString = String.format("%s        %04d", score.getName(),
-                    score.getScore());
             int rowY = screen.getHeight() / 4
                     + fontRegularMetrics.getHeight() * (i + 1) * 2;
-            drawCenteredRegularString(screen, scoreString, rowY);
-            drawColorGrid(RankBadge.forRank(i + 1), screen.getWidth() / 2
-                    - fontRegularMetrics.stringWidth(scoreString) / 2
-                    - RankBadge.WIDTH * 2 - 12,
+
+            drawColorGrid(RankBadge.forRank(i + 1), badgeX,
                     rowY - 5 - RankBadge.HEIGHT - 4, 2);
+
+            drawMixedFontString(score.getName(), nameX, rowY);
+
+            String scoreString = String.format("%04d", score.getScore());
+            int scoreWidth = mixedFontStringWidth(scoreString);
+            drawMixedFontString(scoreString, scoreRightX - scoreWidth, rowY);
+
             i++;
         }
+    }
+
+    /**
+     * Measures a string the way {@link #drawMixedFontString} draws it,
+     * i.e. per character, picking the Korean fallback font for anything
+     * the regular pixel font can't display (such as a Hangul high score
+     * name) instead of the single-font width the pixel font alone would
+     * report.
+     *
+     * @param string
+     *               String to measure.
+     * @return Width of the string in pixels, as it will actually be drawn.
+     */
+    private int mixedFontStringWidth(final String string) {
+        int width = 0;
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            width += backBufferGraphics.getFontMetrics(fontForChar(c))
+                    .charWidth(c);
+        }
+        return width;
+    }
+
+    /**
+     * Draws a string left-to-right from the given position, picking the
+     * regular pixel font or the Korean fallback font per character (e.g.
+     * a Hangul high score name next to its all-ASCII score padding), with
+     * antialiasing off so the Korean fallback keeps the same crisp pixel
+     * look as the regular font.
+     *
+     * @param string
+     *                Text to draw.
+     * @param x
+     *                Left edge to start drawing at.
+     * @param y
+     *                Baseline to draw the text on.
+     */
+    private void drawMixedFontString(final String string, final int x,
+            final int y) {
+        Font originalFont = backBufferGraphics.getFont();
+        Object originalAntialiasing = setTextAntialiasing(false);
+        int positionX = x;
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            Font charFont = fontForChar(c);
+            FontMetrics charMetrics = backBufferGraphics
+                    .getFontMetrics(charFont);
+            backBufferGraphics.setFont(charFont);
+            backBufferGraphics.drawString(Character.toString(c), positionX, y);
+            positionX += charMetrics.charWidth(c);
+        }
+        restoreTextAntialiasing(originalAntialiasing);
+        backBufferGraphics.setFont(originalFont);
     }
 
     /**
@@ -1734,22 +1833,38 @@ public final class DrawManager {
                 GRENADE_COUNT_Y);
     }
 
-    /**
-     * Draws the names of the active buffs, top right, under the separator.
-     *
-     * @param screen Screen to draw on.
-     * @param lines Buff names to show.
-     */
-    public void drawBuffs(final Screen screen, final List<String> lines) {
+    /** Below the boss health bar, the laser hint and the achievement notice (y 60-100). */
+    private static final int BUFF_HUD_TOP = 120;
+    private static final int BUFF_LINE_HEIGHT = 26;
+    private static final int BUFF_GAUGE_WIDTH = 80;
+    private static final int BUFF_GAUGE_HEIGHT = 4;
+    private static final int BUFF_GAUGE_GAP = 4;
+    private static final int BUFF_HUD_MARGIN = 10;
+
+    /** Draws each active effect at the top right, with a gauge of its time left. */
+    public void drawBuffs(final Screen screen,
+                          final List<BuffStatus> statuses) {
         backBufferGraphics.setFont(fontRegular);
-        backBufferGraphics.setColor(Color.CYAN);
-        int y = 62;
-        for (String line : lines) {
-            int textWidth = backBufferGraphics.getFontMetrics().stringWidth(line);
-            backBufferGraphics.drawString(line,
-                    screen.getWidth() - textWidth - 10, y);
-            y += 20;
+        int rightEdge = screen.getWidth() - BUFF_HUD_MARGIN;
+        int y = BUFF_HUD_TOP;
+
+        for (BuffStatus status : statuses) {
+            Color color = buffColor(status.kind());
+            int nameWidth = backBufferGraphics.getFontMetrics()
+                    .stringWidth(status.name());
+
+            backBufferGraphics.setColor(color);
+            backBufferGraphics.drawString(status.name(),
+                    rightEdge - nameWidth, y);
+            drawVolumeBar(rightEdge - BUFF_GAUGE_WIDTH, y + BUFF_GAUGE_GAP,
+                    BUFF_GAUGE_WIDTH, BUFF_GAUGE_HEIGHT,
+                    (int) Math.round(status.progress() * 100), color);
+            y += BUFF_LINE_HEIGHT;
         }
+    }
+
+    private static Color buffColor(final BuffStatus.Kind kind) {
+        return kind == BuffStatus.Kind.DEBUFF ? Color.RED : Color.CYAN;
     }
 
     /**
@@ -1830,9 +1945,22 @@ public final class DrawManager {
 
     public void completeDrawing(final Screen screen) {
         try {
-            if (graphics != null)
-                graphics.drawImage(backBuffer, frame.getInsets().left,
-                        frame.getInsets().top, frame);
+            if (graphics != null) {
+                Insets insets = frame.getInsets();
+                Rectangle imageBounds = new Rectangle(insets.left,
+                        insets.top, backBuffer.getWidth(),
+                        backBuffer.getHeight());
+                // Clip out any overlay component's area (e.g. a visible
+                // name-input field) so our blit never paints over it,
+                // leaving Swing free to repaint that area on its own, on
+                // the event thread, instead of us forcing it from this
+                // render thread every frame.
+                Shape originalClip = graphics.getClip();
+                graphics.setClip(frame.clipExcludingOverlays(imageBounds));
+                graphics.drawImage(backBuffer, insets.left, insets.top,
+                        frame);
+                graphics.setClip(originalClip);
+            }
         } finally {
             backBufferGraphics.dispose();
             if (graphics != null)
@@ -1840,47 +1968,139 @@ public final class DrawManager {
         }
     }
 
-    public void drawNameInput(final Screen screen, final char[] name,
-            final int nameCharSelected) {
-        drawNameInputAt(screen, name, nameCharSelected, screen.getHeight()
+    /**
+     * Draws the "New Record!" name-input chrome for the plain (non-
+     * achievement) game-over screen. While still entering a name, this
+     * draws only the heading and instructions — the actual input row is
+     * left blank, since a real, visible text field (positioned via
+     * {@link #getNameInputFieldBounds(Screen)}) sits there and draws its
+     * own text. Once confirmed, that row shows the saved name as plain
+     * drawn text instead.
+     *
+     * @param screen
+     *                  Screen to draw on.
+     * @param confirmed
+     *                  Whether the name has already been confirmed/saved.
+     * @param name
+     *                  The name to show once confirmed; ignored otherwise.
+     */
+    public void drawNameInput(final Screen screen, final boolean confirmed,
+            final String name) {
+        drawNameInputAt(screen, confirmed, name, screen.getHeight()
                 / 4 + fontRegularMetrics.getHeight() * 10,
                 fontRegularMetrics.getHeight() * 2);
     }
 
-    private void drawNameInputAt(final Screen screen, final char[] name,
-            final int nameCharSelected, final int y, final int spacing) {
-        String newRecordString = "New Record!";
-        String introduceNameString = "Introduce name:";
+    /**
+     * Returns where the real, visible name-input text field should be
+     * positioned on the plain (non-achievement) game-over screen, so it
+     * lines up with {@link #drawNameInput(Screen, boolean, String)}'s
+     * blank third row.
+     *
+     * @param screen
+     *               Screen the field will be shown on.
+     * @return Field bounds, in the screen's own pixel coordinates.
+     */
+    public Rectangle getNameInputFieldBounds(final Screen screen) {
+        return nameInputFieldBoundsAt(screen, screen.getHeight() / 4
+                + fontRegularMetrics.getHeight() * 10,
+                fontRegularMetrics.getHeight() * 2);
+    }
 
+    private void drawNameInputAt(final Screen screen, final boolean confirmed,
+            final String name, final int y, final int spacing) {
         backBufferGraphics.setColor(Color.GREEN);
-        drawCenteredRegularString(screen, newRecordString, y);
+        drawCenteredRegularString(screen, "New Record!", y);
         backBufferGraphics.setColor(Color.WHITE);
-        drawCenteredRegularString(screen, introduceNameString, y + spacing);
-
-        // 3 letters name.
-        int positionX = screen.getWidth()
-                / 2
-                - (fontRegularMetrics.getWidths()[name[0]]
-                        + fontRegularMetrics.getWidths()[name[1]]
-                        + fontRegularMetrics.getWidths()[name[2]]
-                        + fontRegularMetrics.getWidths()[' ']) / 2;
-
-        for (int i = 0; i < 3; i++) {
-            if (i == nameCharSelected)
-                backBufferGraphics.setColor(Color.GREEN);
-            else
-                backBufferGraphics.setColor(Color.WHITE);
-
-            positionX += fontRegularMetrics.getWidths()[name[i]] / 2;
-            positionX = i == 0 ? positionX
-                    : positionX
-                            + (fontRegularMetrics.getWidths()[name[i - 1]]
-                                    + fontRegularMetrics.getWidths()[' ']) / 2;
-
-            backBufferGraphics.drawString(Character.toString(name[i]),
-                    positionX,
+        if (confirmed) {
+            drawCenteredRegularString(screen, "Name saved:", y + spacing);
+            backBufferGraphics.setColor(Color.GREEN);
+            int width = mixedFontStringWidth(name);
+            drawMixedFontString(name, screen.getWidth() / 2 - width / 2,
                     y + spacing * 2);
+        } else {
+            drawCenteredRegularString(screen,
+                    "Type your name, then press Enter:", y + spacing);
         }
+    }
+
+    /**
+     * Computes the on-screen bounds for the real, visible name-input
+     * field from the same baseline/spacing used to draw the surrounding
+     * chrome, so the field lines up with it regardless of which screen
+     * (plain game-over or achievement-unlock) is showing it.
+     */
+    private Rectangle nameInputFieldBoundsAt(final Screen screen, final int y,
+            final int spacing) {
+        int fieldWidth = 170;
+        int fieldHeight = fontRegularMetrics.getHeight() + 8;
+        int fieldX = screen.getWidth() / 2 - fieldWidth / 2;
+        int fieldY = y + spacing * 2 - fontRegularMetrics.getAscent() - 4;
+        return new Rectangle(fieldX, fieldY, fieldWidth, fieldHeight);
+    }
+
+    /**
+     * Picks the font that can actually display the given character: the
+     * regular pixel font for everything it covers (Latin letters, digits),
+     * and the Korean fallback font for anything it cannot, such as Hangul
+     * syllables.
+     *
+     * @param c
+     *          Character to be drawn.
+     * @return Font able to display the character.
+     */
+    private Font fontForChar(final char c) {
+        if (fontRegular.canDisplay(c))
+            return fontRegular;
+        return fontKorean != null ? fontKorean : fontRegular;
+    }
+
+    /**
+     * Returns the Korean fallback font (Galmuri14), so screens can use it
+     * directly for Swing components that can only render with a single
+     * font, such as the visible name-input text field — Galmuri14 covers
+     * Hangul, Latin letters and digits, so it alone is enough there.
+     *
+     * @return The Korean fallback font, or the regular pixel font if it
+     *         failed to load.
+     */
+    public Font getKoreanFont() {
+        return fontKorean != null ? fontKorean : fontRegular;
+    }
+
+    /**
+     * Turns text antialiasing on backBufferGraphics on or off, so the
+     * Korean fallback font keeps a crisp pixel look consistent with the
+     * regular bitmap font.
+     *
+     * @param enabled
+     *                Whether antialiasing should be enabled.
+     * @return Previous antialiasing hint value, to be restored later.
+     */
+    private Object setTextAntialiasing(final boolean enabled) {
+        if (!(backBufferGraphics instanceof Graphics2D))
+            return null;
+        Graphics2D graphics2D = (Graphics2D) backBufferGraphics;
+        Object previous = graphics2D
+                .getRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING);
+        graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                enabled ? RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+                        : RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+        return previous;
+    }
+
+    /**
+     * Restores a text antialiasing hint previously returned by
+     * {@link #setTextAntialiasing(boolean)}.
+     *
+     * @param previousHint
+     *                     Hint value to restore.
+     */
+    private void restoreTextAntialiasing(final Object previousHint) {
+        if (!(backBufferGraphics instanceof Graphics2D) || previousHint == null)
+            return;
+        ((Graphics2D) backBufferGraphics).setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING, previousHint);
     }
 
     public void drawAchievementNotice(final Screen screen,
@@ -1894,25 +2114,25 @@ public final class DrawManager {
     }
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput, final int failedStage) {
-        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, name, selected,
+        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, confirmed, name,
                 achievements, acceptsInput, failedStage, false);
     }
 
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput, final int failedStage,
             final boolean gameCleared) {
         drawAchievementResults(screen, score, lives, enemies, accuracy,
-                isNewRecord, name, selected, achievements, acceptsInput,
+                isNewRecord, confirmed, name, achievements, acceptsInput,
                 failedStage, gameCleared, null);
     }
 
     public void drawAchievementResults(final Screen screen, final int score,
             final int lives, final int enemies, final float accuracy,
-            final boolean isNewRecord, final char[] name, final int selected,
+            final boolean isNewRecord, final boolean confirmed, final String name,
             final List<Achievement> achievements, final boolean acceptsInput,
             final int failedStage, final boolean gameCleared, final String modeLabel) {
         int spacing = fontRegularMetrics.getHeight();
@@ -1938,7 +2158,7 @@ public final class DrawManager {
         }
         if (isNewRecord) {
             y += spacing;
-            drawNameInputAt(screen, name, selected, y, spacing);
+            drawNameInputAt(screen, confirmed, name, y, spacing);
             y += spacing * 3;
         }
         y += spacing;
@@ -1950,8 +2170,46 @@ public final class DrawManager {
             drawCenteredRegularString(screen, achievement.getName(), y);
         }
         backBufferGraphics.setColor(acceptsInput ? Color.GREEN : Color.GRAY);
-        drawCenteredRegularString(screen, "Space: play again   Esc: menu",
-                screen.getHeight() - spacing);
+        String footer = (isNewRecord && !confirmed)
+                ? "Enter: save name   Esc: cancel"
+                : "Space: play again   Esc: menu";
+        drawCenteredRegularString(screen, footer, screen.getHeight() - spacing);
+    }
+
+    /**
+     * Returns where the real, visible name-input text field should be
+     * positioned on the achievement-unlock combined screen, mirroring
+     * the exact same row-accumulation {@link #drawAchievementResults}
+     * uses internally so the field lines up with its blank name-input
+     * row regardless of how many result rows or achievements precede it.
+     *
+     * @param screen
+     *                         Screen the field will be shown on.
+     * @param isNewRecord
+     *                         If the score is a new high score (must be
+     *                         true for this block to exist at all).
+     * @param failedStage
+     *                         Failed stage number, or zero when no stage
+     *                         failed.
+     * @param achievementCount
+     *                         Number of newly unlocked achievements.
+     * @param hasModeLabel
+     *                         Whether a 5th "mode" result row is shown.
+     * @return Field bounds, in the screen's own pixel coordinates.
+     */
+    public Rectangle getAchievementNameInputFieldBounds(final Screen screen,
+            final boolean isNewRecord, final int failedStage,
+            final int achievementCount, final boolean hasModeLabel) {
+        int spacing = fontRegularMetrics.getHeight();
+        int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
+                achievementCount);
+        if (failedStage > 0)
+            y += spacing;
+        y += spacing * 2;
+        y += spacing * (hasModeLabel ? 5 : 4);
+        if (isNewRecord)
+            y += spacing;
+        return nameInputFieldBoundsAt(screen, y, spacing);
     }
 
     public void drawAchievementList(final Screen screen, final RecordsService service, int y) {
@@ -2233,7 +2491,7 @@ public final class DrawManager {
 
     /**
      * Draws the ship selection screen, listing every selectable ship with its
-     * stats and marking the highlighted one.
+     * stats, highlighting the cursor and framing the equipped ship.
      *
      * @param screen
      *                      Screen to draw on.
@@ -2241,9 +2499,11 @@ public final class DrawManager {
      *                      Index of the currently highlighted ship.
      * @param shipTypes
      *                      Ships available for selection, in display order.
+     * @param equippedShip
+     *                      Confirmed ship, independent of the highlighted option.
      */
     public void drawShipSelection(final Screen screen, final ShipType[] shipTypes,
-            final int selectedIndex) {
+            final int selectedIndex, final ShipType equippedShip) {
         String titleString = "SELECT SHIP";
         String instructionsString = Core.getShopController().isShipAvailable(shipTypes[selectedIndex])
                 ? "SPACE: SELECT   ESC: BACK" : "UNLOCK IN SHOP   ESC: BACK";
@@ -2256,6 +2516,9 @@ public final class DrawManager {
 
         for (int i = 0; i < shipTypes.length; i++) {
             ShipType type = shipTypes[i];
+            boolean isEquipped = type == equippedShip;
+            if (isEquipped)
+                drawEquippedShipFrame(screen, startY + i * spacing);
             boolean isSelected = (i == selectedIndex);
             boolean available = Core.getShopController().isShipAvailable(type);
 
@@ -2264,9 +2527,9 @@ public final class DrawManager {
                 drawIcon(Icon.LOCK, screen.getWidth() / 2 - Icon.LOCK.getWidth() * scale / 2,
                         startY + i * spacing - 50, scale, Color.GRAY);
             } else if (isSelected) {
-                entity.Ship previewShip = new entity.Ship(screen.getWidth() / 2 - 13,
-                        startY + i * spacing - 40, type);
-                drawEntity(previewShip, screen.getWidth() / 2 - 13, startY + i * spacing - 40);
+                backBufferGraphics.setColor(Color.GREEN);
+                drawSprite(ShipSprites.forType(type), screen.getWidth() / 2 - 13,
+                        startY + i * spacing - 40);
             }
 
             String name = (isSelected ? "> " : "") + type.getName()
@@ -2274,13 +2537,56 @@ public final class DrawManager {
             String stats = String.format("SPEED: %d | HP: %d | RELOAD: %dMS",
                     type.getSpeed(), type.getMaxLives(), type.getShootingInterval());
 
+            if (isEquipped) {
+                drawEquippedShipName(screen, name, startY + i * spacing, isSelected);
+            } else {
+                backBufferGraphics.setColor(isSelected ? Color.GREEN : Color.GRAY);
+                drawCenteredRegularString(screen, name, startY + i * spacing);
+            }
             backBufferGraphics.setColor(isSelected ? Color.GREEN : Color.GRAY);
-            drawCenteredRegularString(screen, name, startY + i * spacing);
             drawCenteredRegularString(screen, stats, startY + i * spacing + 20);
         }
 
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, instructionsString, screen.getHeight() - 60);
+    }
+
+    private static final int EQUIPPED_FRAME_WIDTH = 318;
+    private static final int EQUIPPED_FRAME_MARGIN = 20;
+    private static final int EQUIPPED_FRAME_THICKNESS = 2;
+    private static final int EQUIPPED_FRAME_TOP_OFFSET = 48;
+    private static final int EQUIPPED_FRAME_HEIGHT = 80;
+    private static final int EQUIPPED_LABEL_GAP = 8;
+    private static final String EQUIPPED_LABEL = "[EQUIPPED]";
+
+    /** The white frame stays with the confirmed ship while the green cursor moves. */
+    private void drawEquippedShipFrame(final Screen screen, final int baseline) {
+        int frameTop = baseline - EQUIPPED_FRAME_TOP_OFFSET;
+        int frameWidth = Math.min(EQUIPPED_FRAME_WIDTH,
+                screen.getWidth() - EQUIPPED_FRAME_MARGIN * 2);
+        int frameLeft = (screen.getWidth() - frameWidth) / 2;
+        backBufferGraphics.setColor(Color.WHITE);
+        for (int inset = 0; inset < EQUIPPED_FRAME_THICKNESS; inset++)
+            backBufferGraphics.drawRect(frameLeft + inset, frameTop + inset,
+                    frameWidth - inset * 2 - 1, EQUIPPED_FRAME_HEIGHT - inset * 2 - 1);
+    }
+
+    /** Centers the ship name and equipped label together on the same line. */
+    private void drawEquippedShipName(final Screen screen, final String name,
+            final int baseline, final boolean highlighted) {
+        int nameWidth = fontRegularMetrics.stringWidth(name);
+        FontMetrics labelMetrics = backBufferGraphics.getFontMetrics(fontEquippedLabel);
+        int totalWidth = nameWidth + EQUIPPED_LABEL_GAP
+                + labelMetrics.stringWidth(EQUIPPED_LABEL);
+        int left = (screen.getWidth() - totalWidth) / 2;
+
+        backBufferGraphics.setFont(fontRegular);
+        backBufferGraphics.setColor(highlighted ? Color.GREEN : Color.WHITE);
+        backBufferGraphics.drawString(name, left, baseline);
+        backBufferGraphics.setFont(fontEquippedLabel);
+        backBufferGraphics.setColor(Color.WHITE);
+        int labelX = left + nameWidth + EQUIPPED_LABEL_GAP;
+        backBufferGraphics.drawString(EQUIPPED_LABEL, labelX, baseline);
     }
 
     /**
