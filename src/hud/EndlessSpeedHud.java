@@ -15,8 +15,6 @@ public final class EndlessSpeedHud {
     private static final int BAR_HEIGHT = 16;
     private static final int BAR_Y = 18;
     private static final Color MAX_COLOR = new Color(255, 215, 0);
-    private static final Font LEVEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
-    private static final Font MAX_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 19);
 
     private int level;
     private double displayedProgress;
@@ -45,12 +43,13 @@ public final class EndlessSpeedHud {
     }
 
     /** Fits between the lives on the left and credits on the right. */
-    public void draw(final Graphics2D source, final int screenWidth) {
+    public void draw(final Graphics2D source, final int screenWidth,
+            final Font levelFont, final Font maxFont) {
         Graphics2D graphics = (Graphics2D) source.create();
         try {
             graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            graphics.setFont(LEVEL_FONT);
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+            graphics.setFont(levelFont);
             FontMetrics metrics = graphics.getFontMetrics();
             int barX = screenWidth / 2 - 28 - BAR_WIDTH / 2;
             String label = "Speed Lv. " + this.level;
@@ -70,8 +69,8 @@ public final class EndlessSpeedHud {
             graphics.drawRect(barX, BAR_Y, BAR_WIDTH - 1, BAR_HEIGHT - 1);
 
             if (this.maximum) {
-                graphics.setFont(MAX_FONT);
-                Rectangle textBounds = MAX_FONT.createGlyphVector(
+                graphics.setFont(maxFont);
+                Rectangle textBounds = maxFont.createGlyphVector(
                         graphics.getFontRenderContext(), "MAX").getPixelBounds(null, 0, 0);
                 graphics.setColor(Color.BLACK);
                 graphics.drawString("MAX",

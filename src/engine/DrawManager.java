@@ -129,6 +129,8 @@ public final class DrawManager {
     private static BufferedImage backBuffer;
     /** Normal sized font. */
     private static Font fontRegular;
+    /** Pixel font sized to fill the Endless MAX bar. */
+    private static Font fontSpeedMax;
     /** Normal sized font properties. */
     private static FontMetrics fontRegularMetrics;
     /** Big sized font. */
@@ -238,6 +240,7 @@ public final class DrawManager {
 
             // Font loading.
             fontRegular = fileManager.loadFont(14f);
+            fontSpeedMax = fontRegular.deriveFont(16f);
             fontBig = fileManager.loadFont(24f);
             logger.info("Finished loading the fonts.");
 
@@ -395,7 +398,8 @@ public final class DrawManager {
 
     /** Draws the animated speed level and progress bar in the Endless HUD. */
     public void drawEnemySpeedProgress(final Screen screen, final EndlessSpeedHud hud) {
-        hud.draw((java.awt.Graphics2D) backBufferGraphics, screen.getWidth());
+        hud.draw((java.awt.Graphics2D) backBufferGraphics, screen.getWidth(),
+                fontRegular, fontSpeedMax);
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */

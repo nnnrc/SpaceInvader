@@ -3,7 +3,9 @@ package hud;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import engine.Core;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
@@ -63,7 +65,7 @@ class EndlessSpeedHudTest {
     }
 
     @Test
-    void drawsAContinuousGreenBarWithAnUnfilledRemainder() {
+    void drawsAContinuousGreenBarWithAnUnfilledRemainder() throws Exception {
         BufferedImage image = render(new EndlessSpeedHud(1, 0.5));
         for (int x = 139; x < 194; x++)
             assertEquals(Color.GREEN.getRGB(), image.getRGB(x, 21));
@@ -71,7 +73,7 @@ class EndlessSpeedHudTest {
     }
 
     @Test
-    void drawsAGoldFullBarWithMaxCenteredInsideIt() {
+    void drawsAGoldFullBarWithMaxCenteredInsideIt() throws Exception {
         BufferedImage image = render(new EndlessSpeedHud(3, 1.0));
         assertEquals(new Color(255, 215, 0).getRGB(), image.getRGB(140, 21));
         assertEquals(new Color(255, 215, 0).getRGB(), image.getRGB(250, 21));
@@ -89,11 +91,12 @@ class EndlessSpeedHudTest {
         assertEquals(195.5, (firstTextX + lastTextX) / 2.0, 1.0);
     }
 
-    private BufferedImage render(final EndlessSpeedHud hud) {
+    private BufferedImage render(final EndlessSpeedHud hud) throws Exception {
         BufferedImage image = new BufferedImage(448, 40, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = image.createGraphics();
         try {
-            hud.draw(graphics, image.getWidth());
+            Font pixelFont = Core.getFileManager().loadFont(14f);
+            hud.draw(graphics, image.getWidth(), pixelFont, pixelFont.deriveFont(16f));
         } finally {
             graphics.dispose();
         }
