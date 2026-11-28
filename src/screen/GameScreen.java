@@ -88,6 +88,8 @@ public class GameScreen extends Screen {
 	static final int PERFECT_CLEAR_BONUS = 300;
 	/** Label shown when the Perfect Clear bonus is given. */
 	static final String PERFECT_CLEAR_LABEL = "PERFECT! +" + PERFECT_CLEAR_BONUS;
+	/** Start of the label shown when the boss no-damage bonus is given. */
+	static final String NO_DAMAGE_LABEL = "NO DAMAGE!";
 	/** Average time between falling obstacle spawns, in milliseconds. */
 	private static final int FALLING_OBSTACLE_INTERVAL = 17500;
 	/** Spawn interval varies from fifteen to twenty seconds. */
@@ -218,6 +220,10 @@ public class GameScreen extends Screen {
     private boolean levelFinished;
 	/** Whether a life was lost in this stage, for the Perfect Clear bonus. */
 	private final LifeLossTracker stageLifeLoss = new LifeLossTracker();
+	/** Whether a life was lost since the boss appeared, for its bonus. */
+	private final LifeLossTracker bossLifeLoss = new LifeLossTracker();
+	/** Boss defeated in this frame, waiting for its no-damage check. */
+	private Boss bossDefeatedThisFrame;
     /** Checks if a bonus life is received. */
     private boolean bonusLife;
     /** Orbital Annihilator (Doomsday Laser), only available on level 7. */
@@ -783,6 +789,10 @@ public class GameScreen extends Screen {
         if (this.annihilator.isFiring())
             manageAnnihilatorBeam();
 
+		// After every collision of the frame, so that a hit in the same
+		// frame as the boss's defeat still cancels the no-damage bonus.
+		checkBossNoDamageBonus();
+
         cleanBullets();
         this.particleSystem.update();
         draw();
@@ -1298,9 +1308,10 @@ public class GameScreen extends Screen {
             return false;
         }
 		AudioManager.playSFX("audio/sfx/player_hit.wav");
-		// Only a life that is really lost cancels the Perfect Clear bonus;
-		// every blocked hit has already returned above.
+		// Only a life that is really lost cancels the Perfect Clear and boss
+		// no-damage bonuses; every blocked hit has already returned above.
 		this.stageLifeLoss.onLifeLost();
+		this.bossLifeLoss.onLifeLost();
 
 		this.ship.destroy();
 		this.ship.triggerDamageFeedback();
@@ -1370,7 +1381,43 @@ public class GameScreen extends Screen {
 			this.score += boss.getType().getPointValue();
 			this.logger.info("Boss " + boss.getType() + " defeated, +"
 					+ boss.getType().getPointValue() + " points.");
+			// The bonus is checked at the end of the frame, after the boss's
+			// bullets in this frame have hit or missed the player.
+			this.bossDefeatedThisFrame = boss;
 		}
+	}
+
+	/**
+	 * Gives the no-damage bonus for the boss defeated in this frame. It runs
+	 * once all collisions of the frame are handled, so a life lost in the
+	 * same frame as the killing blow still cancels the bonus.
+	 */
+	void checkBossNoDamageBonus() {
+		Boss boss = this.bossDefeatedThisFrame;
+		if (boss == null)
+			return;
+		this.bossDefeatedThisFrame = null;
+		awardBossNoDamageBonus(boss);
+	}
+
+	/**
+	 * Gives half of the boss's points as a bonus when it was defeated without
+	 * the player losing a life after it appeared, and shows it under the boss.
+	 * It is called only from checkBossNoDamageBonus, once per defeated boss.
+	 *
+	 * @param boss
+	 *            Boss that was just defeated.
+	 */
+	private void awardBossNoDamageBonus(final Boss boss) {
+		if (!this.bossLifeLoss.isFlawless())
+			return;
+		int bonus = boss.getType().getPointValue() / 2;
+		this.score += bonus;
+		this.floatingScoreHud.showLabel(NO_DAMAGE_LABEL + " +" + bonus,
+				boss.getPositionX() + Boss.WIDTH / 2,
+				boss.getPositionY() + Boss.HEIGHT + 20, SCREEN_CHANGE_INTERVAL);
+		this.logger.info("Boss " + boss.getType()
+				+ " defeated without losing a life, +" + bonus + " points.");
 	}
 
 	/**
@@ -1556,6 +1603,8 @@ public class GameScreen extends Screen {
 		switch (event.getType()) {
 		case SPAWNED:
 			AudioManager.playSFX(BOSS_SPAWN_SOUND);
+			// The no-damage bonus counts from the moment the boss appears.
+			this.bossLifeLoss.start();
 			break;
 		case PHASE_CHANGED:
 			AudioManager.playSFX(BOSS_PHASE_SOUND);

@@ -49,6 +49,10 @@ public final class BossKillScoreTest {
 		GameScreen game = new GameScreen(new GameState(level, 0, 3, 0, 0),
 				new GameSettings(5, 4, 60, 2000), false, 448, 520, 60);
 		game.initialize();
+		// Lose a life first, so that only the boss's own score is checked
+		// here. The no-damage bonus is checked in BossNoDamageBonusTest.
+		check(game.damagePlayer(1, "Test hit"),
+				"Stage " + level + ": the test hit costs a life");
 
 		Method damageBoss = GameScreen.class.getDeclaredMethod("damageBoss",
 				int.class);

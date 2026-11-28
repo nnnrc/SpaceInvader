@@ -2,9 +2,9 @@ package screen;
 
 /**
  * Remembers whether the player has lost a life since a starting point, such
- * as the start of a stage. Only lives that are really lost count: hits
- * blocked by a shield, invulnerability or the Chameleon Hull, and falling
- * obstacles, never reach it.
+ * as the start of a stage or the moment a boss appears. Only lives that are
+ * really lost count: hits blocked by a shield, invulnerability or the
+ * Chameleon Hull, and falling obstacles, never reach it.
  */
 final class LifeLossTracker {
 
