@@ -13,7 +13,8 @@ import java.util.List;
 import entity.EnemyShip;
 
 /**
- * Shows the points earned at the destroyed ship's position.
+ * Shows the points earned at the destroyed ship's position, and short bonus
+ * labels such as "PERFECT!".
  * The position never changes; only the opacity changes until expiration.
  */
 public final class FloatingScoreHud {
@@ -34,8 +35,46 @@ public final class FloatingScoreHud {
         popups.add(new ScorePopup(
                 ship.getPositionX() + ship.getWidth() / 2,
                 ship.getPositionY() - 7,
-                points,
+                "+" + points,
+                points >= 100 ? BONUS : NORMAL,
+                DURATION_MS,
                 System.currentTimeMillis()));
+    }
+
+    /**
+     * Shows a bonus label centred on a point, for example "PERFECT! +300".
+     *
+     * @param label
+     *            Text to show.
+     * @param centerX
+     *            Horizontal centre of the text.
+     * @param baselineY
+     *            Baseline of the text.
+     * @param durationMs
+     *            How long the label stays on screen, in milliseconds.
+     */
+    public void showLabel(final String label, final int centerX,
+            final int baselineY, final long durationMs) {
+        if (label == null || label.isEmpty() || durationMs <= 0)
+            return;
+        popups.add(new ScorePopup(centerX, baselineY, label, BONUS,
+                durationMs, System.currentTimeMillis()));
+    }
+
+    /**
+     * Checks whether a label is still on screen.
+     *
+     * @param label
+     *            Text to look for.
+     * @return Whether a popup with exactly this text has not expired yet.
+     */
+    public boolean isShowing(final String label) {
+        final long now = System.currentTimeMillis();
+        for (ScorePopup popup : popups)
+            if (popup.label.equals(label)
+                    && now - popup.createdAt < popup.durationMs)
+                return true;
+        return false;
     }
 
     /** Draws onto the normal back buffer; no second window or launcher. */
@@ -51,24 +90,24 @@ public final class FloatingScoreHud {
             while (iterator.hasNext()) {
                 final ScorePopup popup = iterator.next();
                 final long elapsed = now - popup.createdAt;
-                if (elapsed >= DURATION_MS) {
+                if (elapsed >= popup.durationMs) {
                     iterator.remove();
                     continue;
                 }
-                final String label = "+" + popup.points;
+                final String label = popup.label;
                 final int textWidth = metrics.stringWidth(label);
                 final int x = Math.max(2, Math.min(width - textWidth - 2,
                         popup.centerX - textWidth / 2));
                 final int y = Math.max(54, Math.min(height - 4, popup.baselineY));
                 // Keep the initial position fixed; fade only in the final 70%.
-                final double progress = elapsed / (double) DURATION_MS;
+                final double progress = elapsed / (double) popup.durationMs;
                 final float alpha = (float) (progress < 0.30
                         ? 1.0 : Math.max(0.0, (1.0 - progress) / 0.70));
                 g.setComposite(AlphaComposite.getInstance(
                         AlphaComposite.SRC_OVER, alpha));
                 g.setColor(Color.BLACK);
                 g.drawString(label, x + 1, y + 1);
-                g.setColor(popup.points >= 100 ? BONUS : NORMAL);
+                g.setColor(popup.color);
                 g.drawString(label, x, y);
             }
         } finally {
@@ -79,14 +118,19 @@ public final class FloatingScoreHud {
     private static final class ScorePopup {
         final int centerX;
         final int baselineY;
-        final int points;
+        final String label;
+        final Color color;
+        final long durationMs;
         final long createdAt;
 
-        ScorePopup(final int centerX, final int baselineY,
-                   final int points, final long createdAt) {
+        ScorePopup(final int centerX, final int baselineY, final String label,
+                   final Color color, final long durationMs,
+                   final long createdAt) {
             this.centerX = centerX;
             this.baselineY = baselineY;
-            this.points = points;
+            this.label = label;
+            this.color = color;
+            this.durationMs = durationMs;
             this.createdAt = createdAt;
         }
     }
