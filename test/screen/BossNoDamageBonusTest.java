@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,8 @@ import engine.Core;
 import engine.GameSettings;
 import engine.GameState;
 import entity.Boss;
+import entity.BossBullet;
+import entity.Bullet;
 import entity.Ship;
 import hud.FloatingScoreHud;
 
@@ -76,6 +79,40 @@ class BossNoDamageBonusTest {
 
 		int points = boss.getType().getPointValue();
 		assertEquals(points + points / 2, game.getGameState().getScore());
+	}
+
+	@Test
+	void losingALifeInTheSameFrameAsTheKillingBlowCancelsTheBonus()
+			throws Exception {
+		GameScreen game = bossStage(GameScreen.BOSS_LEVELS[0]);
+		Boss boss = boss(game);
+		int lives = game.getGameState().getLivesRemaining();
+		// In one frame the player's bullet defeats the boss, and then a boss
+		// bullet hits the player.
+		killingBlowNextFrame(game, boss);
+		hitThePlayerNextFrame(game);
+		game.update();
+
+		assertTrue(boss.isDefeated());
+		assertEquals(lives - 1, game.getGameState().getLivesRemaining());
+		assertEquals(boss.getType().getPointValue(),
+				game.getGameState().getScore());
+		assertFalse(hud(game).isShowing(label(boss)));
+	}
+
+	@Test
+	void killingBlowInAFrameWithoutAHitGivesTheBonus() throws Exception {
+		GameScreen game = bossStage(GameScreen.BOSS_LEVELS[0]);
+		Boss boss = boss(game);
+		int lives = game.getGameState().getLivesRemaining();
+		killingBlowNextFrame(game, boss);
+		game.update();
+
+		int points = boss.getType().getPointValue();
+		assertTrue(boss.isDefeated());
+		assertEquals(lives, game.getGameState().getLivesRemaining());
+		assertEquals(points + points / 2, game.getGameState().getScore());
+		assertTrue(hud(game).isShowing(label(boss)));
 	}
 
 	@Test
@@ -145,7 +182,8 @@ class BossNoDamageBonusTest {
 	}
 
 	/**
-	 * Deals enough damage to defeat the boss in one hit.
+	 * Deals enough damage to defeat the boss in one hit, then ends the frame
+	 * the way update() does.
 	 *
 	 * @param game
 	 *            Stage with the boss.
@@ -154,11 +192,52 @@ class BossNoDamageBonusTest {
 	 */
 	private static void defeat(final GameScreen game, final Boss boss)
 			throws Exception {
+		damageBoss(game, boss.getMaxHealth());
+		assertTrue(boss.isDefeated());
+		game.checkBossNoDamageBonus();
+	}
+
+	/**
+	 * Leaves a boss at full health one hit from defeat and puts a player
+	 * bullet on it, so the next update() defeats it.
+	 *
+	 * @param game
+	 *            Stage with the boss.
+	 * @param boss
+	 *            Boss to defeat.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void killingBlowNextFrame(final GameScreen game,
+			final Boss boss) throws Exception {
+		damageBoss(game, boss.getMaxHealth() - 1);
+		assertFalse(boss.isDefeated());
+		((Set<Bullet>) read(game, "bullets")).add(new Bullet(
+				boss.getPositionX() + boss.getWidth() / 2 - 3,
+				boss.getPositionY() + boss.getHeight() / 2 - 5, -1));
+	}
+
+	/**
+	 * Puts a boss bullet on the player's ship, so the next update() costs a
+	 * life.
+	 *
+	 * @param game
+	 *            Stage with the boss.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void hitThePlayerNextFrame(final GameScreen game)
+			throws Exception {
+		Ship ship = ship(game);
+		((Set<BossBullet>) read(game, "bossBullets")).add(new BossBullet(
+				ship.getPositionX() + ship.getWidth() / 2.0,
+				ship.getPositionY(), 0, 0, 1, false));
+	}
+
+	private static void damageBoss(final GameScreen game, final int damage)
+			throws Exception {
 		Method damageBoss = GameScreen.class.getDeclaredMethod("damageBoss",
 				int.class);
 		damageBoss.setAccessible(true);
-		damageBoss.invoke(game, boss.getMaxHealth());
-		assertTrue(boss.isDefeated());
+		damageBoss.invoke(game, damage);
 	}
 
 	private static String label(final Boss boss) {

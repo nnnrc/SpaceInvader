@@ -222,6 +222,8 @@ public class GameScreen extends Screen {
 	private final LifeLossTracker stageLifeLoss = new LifeLossTracker();
 	/** Whether a life was lost since the boss appeared, for its bonus. */
 	private final LifeLossTracker bossLifeLoss = new LifeLossTracker();
+	/** Boss defeated in this frame, waiting for its no-damage check. */
+	private Boss bossDefeatedThisFrame;
     /** Checks if a bonus life is received. */
     private boolean bonusLife;
     /** Orbital Annihilator (Doomsday Laser), only available on level 7. */
@@ -786,6 +788,10 @@ public class GameScreen extends Screen {
 
         if (this.annihilator.isFiring())
             manageAnnihilatorBeam();
+
+		// After every collision of the frame, so that a hit in the same
+		// frame as the boss's defeat still cancels the no-damage bonus.
+		checkBossNoDamageBonus();
 
         cleanBullets();
         this.particleSystem.update();
@@ -1375,15 +1381,29 @@ public class GameScreen extends Screen {
 			this.score += boss.getType().getPointValue();
 			this.logger.info("Boss " + boss.getType() + " defeated, +"
 					+ boss.getType().getPointValue() + " points.");
-			awardBossNoDamageBonus(boss);
+			// The bonus is checked at the end of the frame, after the boss's
+			// bullets in this frame have hit or missed the player.
+			this.bossDefeatedThisFrame = boss;
 		}
+	}
+
+	/**
+	 * Gives the no-damage bonus for the boss defeated in this frame. It runs
+	 * once all collisions of the frame are handled, so a life lost in the
+	 * same frame as the killing blow still cancels the bonus.
+	 */
+	void checkBossNoDamageBonus() {
+		Boss boss = this.bossDefeatedThisFrame;
+		if (boss == null)
+			return;
+		this.bossDefeatedThisFrame = null;
+		awardBossNoDamageBonus(boss);
 	}
 
 	/**
 	 * Gives half of the boss's points as a bonus when it was defeated without
 	 * the player losing a life after it appeared, and shows it under the boss.
-	 * It is called only from the defeat branch of damageBoss, so it is given
-	 * once per boss.
+	 * It is called only from checkBossNoDamageBonus, once per defeated boss.
 	 *
 	 * @param boss
 	 *            Boss that was just defeated.
