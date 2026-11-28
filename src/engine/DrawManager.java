@@ -42,6 +42,7 @@ import entity.GrenadeFragment;
 import entity.item.AnnihilatorItem;
 import entity.item.ClusterGrenadeItem;
 import entity.Ship;
+import entity.Boss;
 import entity.Bullet;
 import vfx.Icon;
 import vfx.RankBadge;
@@ -335,12 +336,15 @@ public final class DrawManager {
             image = ChameleonHull.getBallSprite();
         }
 
+        // Each sprite cell is a scale x scale square: 2px for most entities,
+        // larger for the boss.
+        int scale = entity instanceof Boss ? Boss.SCALE : 2;
         backBufferGraphics.setColor(entity.getColor());
         for (int i = 0; i < image.length; i++)
             for (int j = 0; j < image[i].length; j++)
                 if (image[i][j])
-                    backBufferGraphics.drawRect(positionX + i * 2, positionY
-                            + j * 2, 1, 1);
+                    backBufferGraphics.fillRect(positionX + i * scale,
+                            positionY + j * scale, scale, scale);
     }
 
     /**
