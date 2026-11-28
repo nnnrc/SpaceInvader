@@ -6,7 +6,7 @@ import entity.Ship;
 /**
  * Cluster Grenade item.
  * Falls from a destroyed enemy ship (15% chance). When collected, it gives
- * the ship a grenade (1 at most) that can be launched with the G key.
+ * the ship a grenade (2 at most) that can be launched with the G key.
  * A grenade explodes on impact (or at a fixed altitude) and splits into
  * 12 fragments that damage the enemies around the explosion.
  */

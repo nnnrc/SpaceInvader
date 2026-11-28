@@ -1,8 +1,10 @@
 package entity.item;
 
 import entity.Ship;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import audio.AudioManager;
 
@@ -15,25 +17,22 @@ public class BuffManager {
     }
 
     public void addBuff(final Item item, final Ship ship) {
-        // Refresh Chameleon without allowing the old timer to cancel it.
-        if (item instanceof ChameleonHull) {
-            Iterator<Item> previous = this.activeBuffs.keySet().iterator();
+        addBuff(item, ship, System.currentTimeMillis());
+    }
 
-            while (previous.hasNext()) {
-                if (previous.next() instanceof ChameleonHull) {
-                    previous.remove();
-                }
-            }
-        }
-
+    /** Applies the item's effect; picking up an active item restarts its timer. */
+    public void addBuff(final Item item, final Ship ship, final long now) {
+        removeEarlierPickup(item);
         item.applyEffect(ship);
 
-        if (item.getDuration() > 0) {
-            long expirationTime =
-                    System.currentTimeMillis() + item.getDuration();
+        if (item.getDuration() > 0)
+            this.activeBuffs.put(item, now + item.getDuration());
+    }
 
-            this.activeBuffs.put(item, expirationTime);
-        }
+    /** Stops an earlier pickup's timer from ending the refreshed effect early. */
+    private void removeEarlierPickup(final Item item) {
+        this.activeBuffs.keySet().removeIf(
+                active -> active.getClass() == item.getClass());
     }
 
     public void update(final Ship ship) {
@@ -64,19 +63,18 @@ public class BuffManager {
         this.activeBuffs.clear();
     }
 
-    public Map<String, Long> getActiveBuffsRemainingTime() {
-        Map<String, Long> remainingTimes = new HashMap<>();
-        long currentTime = System.currentTimeMillis();
+    /** Lists the active timed buffs with their time left, in no particular order. */
+    public List<BuffStatus> getActiveBuffStatuses(final long now) {
+        List<BuffStatus> statuses = new ArrayList<>();
 
         for (Map.Entry<Item, Long> entry : this.activeBuffs.entrySet()) {
-            long remaining = Math.max(
-                    0,
-                    (entry.getValue() - currentTime) / 1000
-            );
+            Item item = entry.getKey();
+            long remaining = Math.max(0, entry.getValue() - now);
 
-            remainingTimes.put(entry.getKey().getName(), remaining);
+            statuses.add(new BuffStatus(item.getName(), remaining,
+                    item.getDuration(), BuffStatus.Kind.BUFF));
         }
 
-        return remainingTimes;
+        return statuses;
     }
 }

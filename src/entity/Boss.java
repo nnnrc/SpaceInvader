@@ -13,10 +13,15 @@ import engine.DrawManager.SpriteType;
  */
 public class Boss extends Entity {
 
-    /** Width of the boss in pixels. */
-    public static final int WIDTH = 16 * 2;
-    /** Height of the boss in pixels. */
-    public static final int HEIGHT = 7 * 2;
+    /**
+     * Size in screen pixels of each sprite cell. Other entities use 2; the
+     * boss is drawn larger so it stands out from the regular enemies.
+     */
+    public static final int SCALE = 3;
+    /** Width of the boss in pixels (16 sprite cells). */
+    public static final int WIDTH = 16 * SCALE;
+    /** Height of the boss in pixels (7 sprite cells). */
+    public static final int HEIGHT = 7 * SCALE;
 
     /** States the boss can be in. */
     public enum State {
@@ -115,7 +120,7 @@ public class Boss extends Entity {
      *            Kind of boss to create.
      */
     public Boss(final int positionX, final int positionY, final BossType type) {
-        // Temporarily reuses the bonus ship sprite (16 x 7 cells, 2px each).
+        // Temporarily reuses the bonus ship sprite (16 x 7 cells, SCALE px each).
         super(positionX, positionY, WIDTH, HEIGHT, NORMAL_COLOR);
         this.spriteType = SpriteType.EnemyShipSpecial;
 

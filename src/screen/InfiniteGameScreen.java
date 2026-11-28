@@ -32,6 +32,7 @@ import entity.Ship;
 import entity.ShipType;
 import entity.ZigzagEnemyShip;
 import engine.DifficultyAdjustWhilePlaying;
+import hud.EndlessSpeedHud;
 
 /**
  * Implements the infinite mode game screen: zigzagging enemies keep spawning
@@ -83,6 +84,8 @@ public class InfiniteGameScreen extends Screen {
 	private ParticleSystem particleSystem;
 	private long gameStartTime;
 	private int lastCountdown = -1;
+	private final EndlessSpeedHud enemySpeedHud;
+	private long lastSpeedHudUpdateNanos;
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps) {
@@ -114,6 +117,8 @@ public class InfiniteGameScreen extends Screen {
 		this.maxLives = this.lives;
 		this.bulletsShot = gameState.getBulletsShot();
 		this.shipsDestroyed = gameState.getShipsDestroyed();
+		this.enemySpeedHud = new EndlessSpeedHud(
+				getEnemySpeedLevel(), getEnemySpeedProgress());
 	}
 
 	public final void initialize() {
@@ -128,6 +133,7 @@ public class InfiniteGameScreen extends Screen {
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
 		this.particleSystem = new ParticleSystem();
 		this.gameStartTime = System.currentTimeMillis();
+		this.lastSpeedHudUpdateNanos = System.nanoTime();
 		this.lastCountdown = -1;
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
@@ -144,6 +150,9 @@ public class InfiniteGameScreen extends Screen {
 	}
 
 	protected final void update() {
+		long nowNanos = System.nanoTime();
+		double elapsedSeconds = (nowNanos - this.lastSpeedHudUpdateNanos) / 1_000_000_000.0;
+		this.lastSpeedHudUpdateNanos = nowNanos;
 		super.update();
 		if (handlePauseMenu())
 			return;
@@ -176,6 +185,8 @@ public class InfiniteGameScreen extends Screen {
 		manageCollisions();
 		cleanBullets();
 		this.particleSystem.update();
+		this.enemySpeedHud.update(getEnemySpeedLevel(),
+				getEnemySpeedProgress(), elapsedSeconds);
 		draw();
 
 		if (this.lives == 0 && !this.gameOver) {
@@ -223,6 +234,26 @@ public class InfiniteGameScreen extends Screen {
 		}
 	}
 
+	/**
+	 * @return Speed level used by newly spawned enemies, from 1 to 3.
+	 */
+	public final int getEnemySpeedLevel() {
+		return Math.min(MAXIMUM_FALL_SPEED,
+				1 + this.shipsDestroyed / KILLS_PER_SPEED_UP);
+	}
+
+	/**
+	 * @return Progress toward the next speed level, from 0 to 1.
+	 *         The maximum level stays at 1 to display a full bar.
+	 */
+	public final double getEnemySpeedProgress() {
+		if (getEnemySpeedLevel() == MAXIMUM_FALL_SPEED)
+			return 1.0;
+
+		return (double) (this.shipsDestroyed % KILLS_PER_SPEED_UP)
+				/ KILLS_PER_SPEED_UP;
+	}
+
 	private void spawnEnemy() {
 		if (!this.spawnCooldown.checkFinished())
 			return;
@@ -241,8 +272,7 @@ public class InfiniteGameScreen extends Screen {
 		else
 			spriteType = SpriteType.EnemyShipA1;
 
-		int fallSpeed = Math.min(MAXIMUM_FALL_SPEED,
-				1 + this.shipsDestroyed / KILLS_PER_SPEED_UP);
+		int fallSpeed = getEnemySpeedLevel();
 
 		this.enemies.add(new ZigzagEnemyShip(positionX,
 				SEPARATION_LINE_HEIGHT, spriteType, fallSpeed));
@@ -297,6 +327,7 @@ public class InfiniteGameScreen extends Screen {
 
 		drawManager.drawScore(this, this.score);
 		drawManager.drawLives(this, this.lives, this.maxLives);
+		drawManager.drawEnemySpeedProgress(this, this.enemySpeedHud);
 		try {
 			drawManager.drawCredits(this, Core.getAssetHudSnapshot().getCredits());
 		} catch (IllegalStateException e) {
