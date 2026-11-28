@@ -2,7 +2,7 @@ package screen;
 
 import java.awt.Color;
 
-/** Stores the player's visual ship customization for the current session. */
+/** Stores the player's ship color; HangarConfig saves it between sessions. */
 public final class ShipCustomization {
 
     private static final Color[] COLORS = {
@@ -34,6 +34,22 @@ public final class ShipCustomization {
 
     public static String getColorName() {
         return COLOR_NAMES[selectedColorIndex];
+    }
+
+    public static int getColorIndex() {
+        return selectedColorIndex;
+    }
+
+    public static int getColorCount() {
+        return COLORS.length;
+    }
+
+    public static void setColorIndex(final int index) {
+        if (index < 0 || index >= COLORS.length) {
+            throw new IllegalArgumentException("Color index out of range: " + index);
+        }
+
+        selectedColorIndex = index;
     }
 
     public static void changeColor(final int direction) {

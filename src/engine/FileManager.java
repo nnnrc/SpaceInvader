@@ -142,13 +142,31 @@ public final class FileManager {
 	 */
 	public Font loadFont(final float size) throws IOException,
 			FontFormatException {
+		return loadFont(size, "font.ttf");
+	}
+
+	/**
+	 * Loads a font of a given size from the named resource.
+	 *
+	 * @param size
+	 *            Point size of the font.
+	 * @param resourceName
+	 *            Name of the font resource on the classpath.
+	 * @return New font.
+	 * @throws IOException
+	 *             In case of loading problems.
+	 * @throws FontFormatException
+	 *             In case of incorrect font format.
+	 */
+	public Font loadFont(final float size, final String resourceName)
+			throws IOException, FontFormatException {
 		InputStream inputStream = null;
 		Font font;
 
 		try {
 			// Font loading.
 			inputStream = FileManager.class.getClassLoader()
-					.getResourceAsStream("font.ttf");
+					.getResourceAsStream(resourceName);
 			font = Font.createFont(Font.TRUETYPE_FONT, inputStream).deriveFont(
 					size);
 		} finally {
