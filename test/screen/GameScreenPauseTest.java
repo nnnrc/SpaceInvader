@@ -114,7 +114,7 @@ class GameScreenPauseTest {
     void choosingNoKeepsTheStageRunning() {
         GameScreen screen = stage();
         for (int code : new int[] { KeyEvent.VK_ESCAPE, KeyEvent.VK_DOWN,
-                KeyEvent.VK_SPACE, KeyEvent.VK_SPACE })
+                KeyEvent.VK_DOWN, KeyEvent.VK_SPACE, KeyEvent.VK_SPACE })
             tap(screen, code);
         assertTrue(screen.isPaused());
         assertFalse(screen.isQuit());
@@ -125,7 +125,8 @@ class GameScreenPauseTest {
     void confirmedQuitEndsTheStageWithoutClearingIt() {
         GameScreen screen = stage();
         for (int code : new int[] { KeyEvent.VK_ESCAPE, KeyEvent.VK_DOWN,
-                KeyEvent.VK_SPACE, KeyEvent.VK_DOWN, KeyEvent.VK_SPACE })
+                KeyEvent.VK_DOWN, KeyEvent.VK_SPACE, KeyEvent.VK_DOWN,
+                KeyEvent.VK_SPACE })
             tap(screen, code);
         assertTrue(screen.isQuit());
         assertFalse(GameClock.isPaused());

@@ -1466,6 +1466,8 @@ public class GameScreen extends Screen {
         PauseMenu.Action action = this.pauseMenu.update(inputManager);
         if (action == PauseMenu.Action.PAUSE && this.runSession != null)
             this.runSession.stopActiveSegment(System.nanoTime());
+        if (action == PauseMenu.Action.SETTINGS)
+            this.pauseMenu.openSettings(this.width, this.height, this.fps);
         if (action == PauseMenu.Action.QUIT) {
             this.quit = true;
             if (this.recordsService != null && this.runSession != null)

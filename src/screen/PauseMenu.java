@@ -8,9 +8,9 @@ import engine.InputManager;
 
 /**
  * Keeps the state of the pause menu shown during a game: whether it is open,
- * which option is selected and whether quitting is being confirmed. It only
- * reacts to the key states passed to it, so it can be tested without a
- * screen.
+ * which option is selected and whether quitting is being confirmed. Its key
+ * logic only reacts to the key states passed to it, so it can be tested
+ * without a screen. It also opens the settings over the paused game.
  */
 public final class PauseMenu {
 
@@ -24,22 +24,34 @@ public final class PauseMenu {
         MOVE,
         /** The menu has closed: the game must go on. */
         RESUME,
+        /** Settings was chosen: the screen opens it, the menu stays open. */
+        SETTINGS,
         /** Quitting was confirmed: the run must end. */
         QUIT
     }
 
     /** Options of the pause menu, in order. */
-    public static final String[] OPTIONS = { "Resume", "Quit to Main Menu" };
+    public static final String[] OPTIONS = { "Resume", "Settings",
+            "Quit to Main Menu" };
     /** Options of the quit confirmation, in order. */
     public static final String[] CONFIRM_OPTIONS = { "No", "Yes" };
     /** Index of the option that resumes the game. */
     public static final int RESUME_OPTION = 0;
+    /** Index of the option that opens the settings. */
+    public static final int SETTINGS_OPTION = 1;
     /** Index of the option that asks to quit. */
-    public static final int QUIT_OPTION = 1;
+    public static final int QUIT_OPTION = 2;
     /** Index of the confirmation option that cancels quitting. */
     public static final int CONFIRM_NO = 0;
     /** Index of the confirmation option that confirms quitting. */
     public static final int CONFIRM_YES = 1;
+
+    /** Screen code of the settings menu, as used by Core. */
+    private static final int SETTINGS_SCREEN = 4;
+    /** Screen code of the audio settings, as used by Core. */
+    private static final int AUDIO_SCREEN = 5;
+    /** Screen code of the controls settings, as used by Core. */
+    private static final int CONTROLS_SCREEN = 6;
 
     /** Whether the menu is shown. */
     private boolean open;
@@ -89,6 +101,9 @@ public final class PauseMenu {
             AudioManager.resumeBGM();
             AudioManager.playSFX("audio/sfx/menu_select.wav");
             break;
+        case SETTINGS:
+            AudioManager.playSFX("audio/sfx/menu_select.wav");
+            break;
         case QUIT:
             GameClock.resume();
             AudioManager.stopBGM();
@@ -133,10 +148,57 @@ public final class PauseMenu {
         if (select)
             return select();
         if (up != down) {
-            this.selected = this.selected == 0 ? 1 : 0;
+            int count = this.confirmingQuit ? CONFIRM_OPTIONS.length
+                    : OPTIONS.length;
+            this.selected = (this.selected + (down ? 1 : -1) + count) % count;
             return Action.MOVE;
         }
         return Action.NONE;
+    }
+
+    /**
+     * Shows the settings over the paused game until the player goes back to
+     * the pause menu. The settings screens are the same as in the main menu,
+     * except that Gameplay is not shown, because the difficulty of a run must
+     * not change while it is being played. The game time does not move while
+     * the settings are open.
+     *
+     * @param width
+     *            Screen width.
+     * @param height
+     *            Screen height.
+     * @param fps
+     *            Frames per second of the screens.
+     */
+    public void openSettings(final int width, final int height,
+            final int fps) {
+        GameClock.runOutsideGame(() -> {
+            int code = SETTINGS_SCREEN;
+            while (code == SETTINGS_SCREEN || code == AUDIO_SCREEN
+                    || code == CONTROLS_SCREEN) {
+                Screen screen;
+                if (code == AUDIO_SCREEN)
+                    screen = new AudioControlScreen(width, height, fps);
+                else if (code == CONTROLS_SCREEN)
+                    screen = new ControlsSettingsScreen(width, height, fps);
+                else
+                    screen = new SettingsScreen(width, height, fps, true);
+                screen.initialize();
+                code = screen.run();
+            }
+        });
+        waitForKeyRelease();
+    }
+
+    /**
+     * Ignores the keys that are still held, for example Esc after leaving
+     * the settings, so they do not act until they are pressed again.
+     */
+    public void waitForKeyRelease() {
+        this.backWasDown = true;
+        this.upWasDown = true;
+        this.downWasDown = true;
+        this.selectWasDown = true;
     }
 
     /**
@@ -200,6 +262,8 @@ public final class PauseMenu {
                 this.open = false;
                 return Action.RESUME;
             }
+            if (this.selected == SETTINGS_OPTION)
+                return Action.SETTINGS;
             this.confirmingQuit = true;
             this.selected = CONFIRM_NO;
             return Action.MOVE;

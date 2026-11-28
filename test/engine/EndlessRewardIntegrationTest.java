@@ -113,7 +113,8 @@ class EndlessRewardIntegrationTest {
             set(current, "inputDelay", Core.getCooldown(0));
             set(current, "isRunning", true);
             for (int code : new int[] { KeyEvent.VK_ESCAPE, KeyEvent.VK_DOWN,
-                    KeyEvent.VK_SPACE, KeyEvent.VK_DOWN, KeyEvent.VK_SPACE }) {
+                    KeyEvent.VK_DOWN, KeyEvent.VK_SPACE, KeyEvent.VK_DOWN,
+                    KeyEvent.VK_SPACE }) {
                 key(code, true);
                 try {
                     call(current, "update");

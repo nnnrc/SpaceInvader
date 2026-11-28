@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks the pause menu states: opening, moving, resuming and confirming a
- * quit, using key states only.
+ * Checks the pause menu states: opening, moving, resuming, choosing Settings
+ * and confirming a quit, using key states only.
  */
 class PauseMenuTest {
 
@@ -22,6 +22,13 @@ class PauseMenuTest {
     /** Presses and releases a down key. */
     private static PauseMenu.Action down(final PauseMenu menu) {
         PauseMenu.Action action = menu.handleKeys(false, false, true, false);
+        menu.handleKeys(false, false, false, false);
+        return action;
+    }
+
+    /** Presses and releases an up key. */
+    private static PauseMenu.Action up(final PauseMenu menu) {
+        PauseMenu.Action action = menu.handleKeys(false, true, false, false);
         menu.handleKeys(false, false, false, false);
         return action;
     }
@@ -76,6 +83,7 @@ class PauseMenuTest {
     void quittingAsksForConfirmationWithNoSelected() {
         PauseMenu menu = new PauseMenu();
         back(menu);
+        down(menu);
         assertEquals(PauseMenu.Action.MOVE, down(menu));
         assertEquals(PauseMenu.QUIT_OPTION, menu.getSelected());
         assertEquals(PauseMenu.Action.MOVE, select(menu));
@@ -88,6 +96,7 @@ class PauseMenuTest {
         PauseMenu menu = new PauseMenu();
         back(menu);
         down(menu);
+        down(menu);
         select(menu);
         down(menu);
         assertEquals(PauseMenu.Action.QUIT, select(menu));
@@ -99,6 +108,7 @@ class PauseMenuTest {
         PauseMenu menu = new PauseMenu();
         back(menu);
         down(menu);
+        down(menu);
         select(menu);
         assertEquals(PauseMenu.Action.MOVE, select(menu));
         assertFalse(menu.isConfirmingQuit());
@@ -109,5 +119,43 @@ class PauseMenuTest {
         assertEquals(PauseMenu.Action.MOVE, back(menu));
         assertFalse(menu.isConfirmingQuit());
         assertTrue(menu.isOpen());
+    }
+
+    @Test
+    void upAndDownMoveThroughAllOptionsAndWrap() {
+        PauseMenu menu = new PauseMenu();
+        back(menu);
+        down(menu);
+        assertEquals(PauseMenu.SETTINGS_OPTION, menu.getSelected());
+        down(menu);
+        assertEquals(PauseMenu.QUIT_OPTION, menu.getSelected());
+        down(menu);
+        assertEquals(PauseMenu.RESUME_OPTION, menu.getSelected());
+        assertEquals(PauseMenu.Action.MOVE, up(menu));
+        assertEquals(PauseMenu.QUIT_OPTION, menu.getSelected());
+    }
+
+    @Test
+    void choosingSettingsKeepsTheMenuOpen() {
+        PauseMenu menu = new PauseMenu();
+        back(menu);
+        down(menu);
+        assertEquals(PauseMenu.Action.SETTINGS, select(menu));
+        assertTrue(menu.isOpen());
+        assertFalse(menu.isConfirmingQuit());
+        assertEquals(PauseMenu.SETTINGS_OPTION, menu.getSelected());
+    }
+
+    @Test
+    void keysHeldAfterTheSettingsDoNotActUntilPressedAgain() {
+        PauseMenu menu = new PauseMenu();
+        back(menu);
+        menu.waitForKeyRelease();
+        assertEquals(PauseMenu.Action.NONE,
+                menu.handleKeys(true, false, false, false));
+        assertTrue(menu.isOpen());
+
+        menu.handleKeys(false, false, false, false);
+        assertEquals(PauseMenu.Action.RESUME, back(menu));
     }
 }

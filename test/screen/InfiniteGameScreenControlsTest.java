@@ -92,6 +92,7 @@ public final class InfiniteGameScreenControlsTest {
         quitting.isRunning = true;
         tap(quitting, KeyEvent.VK_ESCAPE);
         tap(quitting, KeyEvent.VK_DOWN);
+        tap(quitting, KeyEvent.VK_DOWN);
         tap(quitting, KeyEvent.VK_SPACE);
         check(quitting.isRunning && quitting.isPaused(),
                 "Quitting asks for confirmation first");
