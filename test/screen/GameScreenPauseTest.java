@@ -13,12 +13,14 @@ import org.junit.jupiter.api.Test;
 
 import audio.AudioManager;
 import engine.Core;
+import engine.GameClock;
 import engine.GameSettings;
 import engine.GameState;
 
 /**
- * Checks that Esc pauses a Campaign stage and that quitting from the pause
- * menu ends the stage without clearing it.
+ * Checks that Esc pauses a Campaign stage, that the game clock stops while
+ * it is paused, and that quitting from the pause menu ends the stage without
+ * clearing it.
  */
 class GameScreenPauseTest {
 
@@ -36,6 +38,7 @@ class GameScreenPauseTest {
 
     @AfterEach
     void restoreAudio() {
+        GameClock.reset();
         AudioManager.stopBGM();
         AudioManager.setMuted(this.oldMute);
     }
@@ -97,10 +100,12 @@ class GameScreenPauseTest {
         GameScreen screen = stage();
         tap(screen, KeyEvent.VK_ESCAPE);
         assertTrue(screen.isPaused());
+        assertTrue(GameClock.isPaused());
         assertTrue(screen.isRunning);
 
         tap(screen, KeyEvent.VK_ESCAPE);
         assertFalse(screen.isPaused());
+        assertFalse(GameClock.isPaused());
         assertFalse(screen.isQuit());
         assertTrue(screen.isRunning);
     }
@@ -123,6 +128,7 @@ class GameScreenPauseTest {
                 KeyEvent.VK_SPACE, KeyEvent.VK_DOWN, KeyEvent.VK_SPACE })
             tap(screen, code);
         assertTrue(screen.isQuit());
+        assertFalse(GameClock.isPaused());
         assertFalse(screen.isRunning);
         assertFalse(screen.isStageCleared());
     }

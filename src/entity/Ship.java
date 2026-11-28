@@ -2,6 +2,7 @@ package entity;
 
 import engine.Cooldown;
 import engine.Core;
+import engine.GameClock;
 import engine.DrawManager.SpriteType;
 import java.awt.Color;
 import java.util.Set;
@@ -227,7 +228,7 @@ public class Ship extends Entity {
             return 0;
         }
 
-        long currentTime = System.currentTimeMillis();
+        long currentTime = GameClock.now();
 
         int interval = this.shootingInterval;
 
@@ -312,7 +313,7 @@ public class Ship extends Entity {
             return 0;
         }
 
-        long currentTime = System.currentTimeMillis();
+        long currentTime = GameClock.now();
 
         if (currentTime < this.nextShotTime) {
             return 0;
@@ -423,7 +424,7 @@ public class Ship extends Entity {
         } else if (this.damageFeedbackCooldown != null
                 && !this.damageFeedbackCooldown.checkFinished()) {
             // Alternate red and normal for 0.5s immediately after damage
-            long elapsed = System.currentTimeMillis() - this.damageFeedbackStartTime;
+            long elapsed = GameClock.now() - this.damageFeedbackStartTime;
             if ((elapsed / FLASH_INTERVAL) % 2 == 0) {
                 setColor(Color.RED);
             } else {
@@ -718,7 +719,7 @@ public class Ship extends Entity {
         if (this.chameleonHullActive || this.isShieldActive) {
             return;
         }
-        this.damageFeedbackStartTime = System.currentTimeMillis();
+        this.damageFeedbackStartTime = GameClock.now();
         this.damageFeedbackCooldown.reset();
     }
     public final void setBaseColor(final Color color) {

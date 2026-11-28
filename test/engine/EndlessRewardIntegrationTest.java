@@ -63,6 +63,7 @@ class EndlessRewardIntegrationTest {
     @AfterEach
     void restoreSession() throws Exception {
         key(KeyEvent.VK_ESCAPE, false);
+        GameClock.reset();
         AudioManager.stopBGM();
         AudioManager.setMuted(previousMute);
         swapCore("shopController", previousShop);
@@ -121,8 +122,11 @@ class EndlessRewardIntegrationTest {
                 }
                 if (Boolean.TRUE.equals(get(current, "isRunning")))
                     call(current, "update");
+                if (code == KeyEvent.VK_ESCAPE)
+                    assertTrue(GameClock.isPaused());
             }
             assertTrue(current.isAbandoned());
+            assertFalse(GameClock.isPaused());
             assertEquals(Boolean.FALSE, get(current, "isRunning"));
         });
         assertEquals(201, files.loadPlayerAssets(save).getBalance());

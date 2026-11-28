@@ -3,6 +3,7 @@ package screen;
 import java.awt.event.KeyEvent;
 
 import audio.AudioManager;
+import engine.GameClock;
 import engine.InputManager;
 
 /**
@@ -56,8 +57,9 @@ public final class PauseMenu {
     private boolean selectWasDown;
 
     /**
-     * Reads the keys of one frame and plays the matching feedback: the
-     * background music pauses while the menu is open, and the menu sounds
+     * Reads the keys of one frame and plays the matching feedback: the game
+     * clock and the background music pause while the menu is open, so item,
+     * cooldown and laser timers keep the time they had left. The menu sounds
      * are the same as on the other menu screens. Esc opens and closes the
      * menu, Up / W and Down / S move the selection, and Space / Enter choose.
      *
@@ -75,6 +77,7 @@ public final class PauseMenu {
                         || input.isKeyDown(KeyEvent.VK_ENTER));
         switch (action) {
         case PAUSE:
+            GameClock.pause();
             AudioManager.pauseBGM();
             AudioManager.playSFX("audio/sfx/menu_select.wav");
             break;
@@ -82,10 +85,12 @@ public final class PauseMenu {
             AudioManager.playSFX("audio/sfx/menu_move.wav");
             break;
         case RESUME:
+            GameClock.resume();
             AudioManager.resumeBGM();
             AudioManager.playSFX("audio/sfx/menu_select.wav");
             break;
         case QUIT:
+            GameClock.resume();
             AudioManager.stopBGM();
             AudioManager.resumeBGM();
             AudioManager.playSFX("audio/sfx/menu_back.wav");

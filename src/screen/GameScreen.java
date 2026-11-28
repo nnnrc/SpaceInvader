@@ -16,6 +16,7 @@ import entity.item.ShieldItem;
 import engine.Cooldown;
 import engine.CampaignUpgrades;
 import engine.Core;
+import engine.GameClock;
 import engine.GameSettings;
 import engine.GameState;
 import engine.GameplayConfig;
@@ -419,6 +420,8 @@ public class GameScreen extends Screen {
             final ShipType shipType, final RunSession runSession,
             final CampaignUpgrades campaignUpgrades) {
         super(width, height, fps);
+        // A new stage always starts with the game clock running.
+        GameClock.reset();
         if (campaignUpgrades == null) {
             throw new IllegalArgumentException("Campaign upgrades cannot be null.");
         }
@@ -552,7 +555,7 @@ public class GameScreen extends Screen {
 		this.bossExplosionCooldown = Core.getCooldown(BOSS_EXPLOSION_TIME);
 
         // Special input delay / countdown.
-        this.gameStartTime = System.currentTimeMillis();
+        this.gameStartTime = GameClock.now();
         this.inputDelay = Core.getCooldown(INPUT_DELAY);
         this.inputDelay.reset();
 
@@ -688,12 +691,12 @@ public class GameScreen extends Screen {
                     if (!this.annihilator.isReady()) {
                         this.spaceHeldSince = 0;
                     } else if (this.spaceHeldSince == 0) {
-                        this.spaceHeldSince = System.currentTimeMillis();
+                        this.spaceHeldSince = GameClock.now();
                     }
 
                     if (this.spaceHeldSince != 0
                             && this.level == OrbitalAnnihilator.REQUIRED_LEVEL
-							&& System.currentTimeMillis() - this.spaceHeldSince >= ANNIHILATOR_HOLD_TIME) {
+							&& GameClock.now() - this.spaceHeldSince >= ANNIHILATOR_HOLD_TIME) {
                         this.annihilator.trigger();
 						// Charging stops the ship shooting, so a burst that
 						// is still owed is dropped rather than fired when
@@ -937,7 +940,7 @@ public class GameScreen extends Screen {
 
 		// Item HUD: grenades left, active buffs and their time left.
 		drawManager.drawGrenadeCount(this, this.ship.getGrenadeCount());
-		long buffHudTime = System.currentTimeMillis();
+		long buffHudTime = GameClock.now();
 		drawManager.drawBuffs(this, BuffHud.visible(
 				BuffHud.collect(this.itemManager.getBuffManager(),
 						this.playerStatus, buffHudTime),
@@ -964,7 +967,7 @@ public class GameScreen extends Screen {
         // Countdown to game start.
         if (!this.inputDelay.checkFinished()) {
 			int countdown = (int) ((INPUT_DELAY
-					- (System.currentTimeMillis()
+					- (GameClock.now()
 					- this.gameStartTime)) / 1000);
             playCountdownSound(countdown);
 			drawManager.drawCountDown(this, this.level, countdown,

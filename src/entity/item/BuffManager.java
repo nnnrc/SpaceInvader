@@ -1,6 +1,7 @@
 package entity.item;
 
 import entity.Ship;
+import engine.GameClock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,7 +18,7 @@ public class BuffManager {
     }
 
     public void addBuff(final Item item, final Ship ship) {
-        addBuff(item, ship, System.currentTimeMillis());
+        addBuff(item, ship, GameClock.now());
     }
 
     /** Applies the item's effect; picking up an active item restarts its timer. */
@@ -36,7 +37,7 @@ public class BuffManager {
     }
 
     public void update(final Ship ship) {
-        long currentTime = System.currentTimeMillis();
+        long currentTime = GameClock.now();
 
         Iterator<Map.Entry<Item, Long>> iterator =
                 this.activeBuffs.entrySet().iterator();

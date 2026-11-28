@@ -1,5 +1,7 @@
 package entity;
 
+import engine.GameClock;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -403,14 +405,14 @@ public class PlayerStatus {
 
 	/**
 	 * Reads the clock the shield is measured against. Tests override this to
-	 * reach the expiry boundary without waiting. A pause feature would also
-	 * hook in here, since the wall clock keeps running while the game is
+	 * reach the expiry boundary without waiting. It reads the game clock, so
+	 * the shield and the slow effect stop counting down while the game is
 	 * paused.
 	 *
 	 * @return Current time in milliseconds.
 	 */
 	long currentTimeMillis() {
-		return System.currentTimeMillis();
+		return GameClock.now();
 	}
 
 	/** Ends an active shield immediately, if there is one. */
