@@ -68,6 +68,9 @@ import entity.item.AnnihilatorItem;
 import entity.item.BuffHud;
 import entity.item.ClusterGrenadeItem;
 import entity.item.TwinCanon;
+import java.awt.Color;
+import entity.FloatingText;
+import entity.item.Item;
 
 /**
  * Implements the game screen, where the action happens.
@@ -198,6 +201,10 @@ public class GameScreen extends Screen {
     /** Current score. */
     private int score;
 	private final FloatingScoreHud floatingScoreHud = new FloatingScoreHud();
+    /** Active floating popups for earned score and collected items. */
+    private final List<FloatingText> floatingTexts = new ArrayList<FloatingText>();
+    /** Timestamp of the previous floating popup update, in nanoseconds. */
+    private long lastFloatingTextUpdateNanos = System.nanoTime();
     /** Player lives left. */
 	private PlayerStatus playerStatus;
 	/** State of the debug shield key on the previous frame. */
@@ -494,6 +501,13 @@ public class GameScreen extends Screen {
 		this.ship.setBaseColor(ShipCustomization.getColor());
         this.itemManager = new ItemManager(this.height);
 
+        this.floatingTexts.clear();
+        this.lastFloatingTextUpdateNanos = System.nanoTime();
+        this.itemManager.setPickupListener(item -> {
+            String label = getItemPickupLabel(item);
+            onItemCollected(item.getPositionX(), item.getPositionY(), label);
+        });
+
         this.shieldDroppedThisLevel = false;
         this.chameleonDroppedThisLevel = false;
         this.hyperfireDroppedThisLevel = false;
@@ -777,6 +791,11 @@ public class GameScreen extends Screen {
 
         cleanBullets();
         this.particleSystem.update();
+        long nowNanos = System.nanoTime();
+        double deltaSeconds = Math.min(0.1,
+                Math.max(0.0, (nowNanos - this.lastFloatingTextUpdateNanos) / 1_000_000_000.0));
+        this.lastFloatingTextUpdateNanos = nowNanos;
+        updateFloatingTexts(deltaSeconds);
         draw();
 
         advanceStageIfReady();
@@ -923,6 +942,8 @@ public class GameScreen extends Screen {
                     this.twinCanonItem.getPositionY());
 
         drawManager.drawFloatingScores(floatingScoreHud, this);
+
+        drawManager.drawFloatingTexts(this.floatingTexts);
 
 		// Interface.
 		drawManager.drawScore(this, this.score);
@@ -1152,6 +1173,7 @@ public class GameScreen extends Screen {
                         && checkCollision(bullet, this.twinCanonItem)) {
                     this.itemManager.getBuffManager().addBuff(
                             this.twinCanonItem, this.ship);
+                    onItemCollected(this.twinCanonItem.getPositionX(), this.twinCanonItem.getPositionY(), "TWIN CANNON!");
                     this.twinCanonItem = null;
                     recyclable.add(bullet);
                     AudioManager.playSFX("audio/sfx/item_pickup.wav");
@@ -1947,4 +1969,50 @@ public class GameScreen extends Screen {
             AudioManager.playSFX("audio/sfx/enemy_explosion.wav");
         }
     }
+
+    public void spawnFloatingText(final double x, final double y,
+                                  final String text, final Color color) {
+        this.floatingTexts.add(new FloatingText(x, y, text, color));
+    }
+
+
+    public void onItemCollected(final double x, final double y,
+                                final String label) {
+        spawnFloatingText(x, y, label, Color.CYAN);
+    }
+
+    public void updateFloatingTexts(final double deltaSeconds) {
+        Iterator<FloatingText> iterator = this.floatingTexts.iterator();
+        while (iterator.hasNext()) {
+            FloatingText popup = iterator.next();
+            popup.update(deltaSeconds);
+            if (popup.isExpired()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    public List<FloatingText> getFloatingTexts() {
+        return Collections.unmodifiableList(this.floatingTexts);
+    }
+
+    private String getItemPickupLabel(final Item item) {
+        if (item instanceof ShieldItem) {
+            return "SHIELD!";
+        }
+        if (item instanceof Hyperfire) {
+            return "HYPERFIRE!";
+        }
+        if (item instanceof ChameleonHull) {
+            return "CHAMELEON!";
+        }
+        if (item instanceof ClusterGrenadeItem) {
+            return "GRENADE!";
+        }
+        if (item instanceof AnnihilatorItem) {
+            return "ANNIHILATOR!";
+        }
+        return item.getClass().getSimpleName().toUpperCase() + "!";
+    }
+
 }

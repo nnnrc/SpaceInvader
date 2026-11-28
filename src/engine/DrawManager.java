@@ -48,6 +48,9 @@ import vfx.Icon;
 import vfx.RankBadge;
 import vfx.ShipSprites;
 import screen.GameModeScreen;
+import java.awt.AlphaComposite;
+import java.awt.Graphics2D;
+import entity.FloatingText;
 
 /**
  * Manages screen drawing.
@@ -2491,6 +2494,35 @@ public final class DrawManager {
     public void drawFloatingScores(final FloatingScoreHud hud, final Screen screen) {
         hud.draw((java.awt.Graphics2D) backBufferGraphics,
                 screen.getWidth(), screen.getHeight());
+    }
+
+    public void drawFloatingTexts(final List<FloatingText> popups) {
+        if (popups == null || popups.isEmpty() || backBufferGraphics == null) {
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) backBufferGraphics;
+        Font originalFont = g2d.getFont();
+        Color originalColor = g2d.getColor();
+        var originalComposite = g2d.getComposite();
+
+        g2d.setFont(fontRegular != null ? fontRegular.deriveFont(Font.BOLD, 14f) : originalFont);
+
+        for (FloatingText popup : popups) {
+            if (popup == null || popup.isExpired()) {
+                continue;
+            }
+            g2d.setComposite(AlphaComposite.getInstance(
+                    AlphaComposite.SRC_OVER, popup.getAlpha()));
+            g2d.setColor(popup.getColor());
+            g2d.drawString(popup.getText(),
+                    (int) Math.round(popup.getX()),
+                    (int) Math.round(popup.getY()));
+        }
+
+        g2d.setComposite(originalComposite);
+        g2d.setColor(originalColor);
+        g2d.setFont(originalFont);
     }
 
     /**

@@ -117,6 +117,7 @@ def smokeTestClasses = [
     'entity.BulletOwnershipTest',
     'entity.BurstCancellationTest',
     'entity.EnemyShootingCooldownTest',
+    'entity.FloatingTextTest',
     'entity.FormationMovementSpeedTest',
     'entity.FormationSmoothnessTest',
     'entity.PlayerStatusEventTest',
