@@ -284,10 +284,11 @@ public class InfiniteGameScreen extends Screen {
 	}
 
 	private void moveEnemies() {
+		int playerCenterX = this.ship.getPositionX() + this.ship.getWidth() / 2;
 		Iterator<ZigzagEnemyShip> iterator = this.enemies.iterator();
 		while (iterator.hasNext()) {
 			ZigzagEnemyShip enemy = iterator.next();
-			enemy.zigzagMove();
+			enemy.moveOneFrame(playerCenterX);
 			enemy.update();
 			if (enemy.getPositionY() > this.height)
 				iterator.remove();
@@ -296,7 +297,8 @@ public class InfiniteGameScreen extends Screen {
 
 	private void shootEnemies() {
 		for (ZigzagEnemyShip enemy : this.enemies) {
-			if (Math.random() < ENEMY_FIRE_CHANCE) {
+			if (enemy.firesThisFrame()
+					|| Math.random() < ENEMY_FIRE_CHANCE) {
 				this.enemyBullets.add(BulletPool.getBullet(
 						enemy.getPositionX() + enemy.getWidth() / 2,
 						enemy.getPositionY() + enemy.getHeight(),
