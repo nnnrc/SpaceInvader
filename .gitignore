@@ -169,6 +169,7 @@ pip-log.txt
 /log.*
 *.ttf
 !res/font.ttf
+!res/Galmuri14.ttf
 .checkstyle
 
 # Local compile output and personal high scores
